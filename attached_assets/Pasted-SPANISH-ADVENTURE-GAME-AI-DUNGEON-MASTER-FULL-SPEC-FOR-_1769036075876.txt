@@ -1,0 +1,251 @@
+SPANISH ADVENTURE GAME (AI DUNGEON MASTER) — FULL SPEC FOR REPLIT BUILD
+=====================================================================
+
+ROLE / GOAL
+-----------
+You are a senior full-stack engineer and game designer. Build a production-ready MVP of a Spanish-only, text-based adventure game where an AI acts as a dungeon master (DM). The game is designed to help a player practice Spanish through interactive story narration, branching choices, and optional free-text input.
+
+The app must be runnable in Replit and follow best practices for keeping API keys secure.
+
+HIGH-LEVEL CONCEPT
+------------------
+- Everything shown to the user is in Spanish: narration, dialogue, UI labels, choice options, hints, etc.
+- The player interacts by choosing one of several AI-generated options (buttons).
+- The player may also type a custom response (free text) when allowed.
+- The player can ask questions without derailing the story (Pregunta mode).
+- The game supports browsing past turns via pagination.
+- The AI tracks story pacing toward a chosen total length.
+
+TECH STACK (MVP)
+----------------
+Frontend:
+- React (Vite) recommended for Replit simplicity
+Backend:
+- Node.js + Express
+AI:
+- OpenAI API (key stored server-side ONLY)
+Storage:
+- In-memory session state for MVP (no database required)
+
+CRITICAL SECURITY REQUIREMENT
+-----------------------------
+- Never expose the OpenAI API key in the browser.
+- The frontend must call your backend endpoint.
+- The backend calls OpenAI using process.env.OPENAI_API_KEY.
+- The frontend must never contain the key, and never call OpenAI directly.
+
+CORE FEATURES
+-------------
+1) Spanish-only gameplay:
+   - ALL narration, dialogue, choices, hints, error messages, and UI labels must be Spanish.
+   - The AI should adapt vocabulary/grammar complexity to a user-selected level: A2 / B1 / B2.
+
+2) Game Start Flow:
+   At game start, the experience must guide the user through:
+   - Choose duration: corta / media / larga
+   - Choose Spanish level: A2 / B1 / B2
+   - The AI generates 3 distinct adventure plot hooks (in Spanish)
+   - The player picks one plot to begin
+   - Optionally: a "tono" choice (misterio/acción/humor/realista/fantasía) may be included if easy, but not required.
+
+3) Turn-Based Loop:
+   Each turn the AI returns:
+   - Spanish narration (narracion)
+   - A set of suggested response options (opciones) where the count is dynamic:
+     - The AI decides how many options make sense (2, 3, or 4).
+     - Always at least 2 options.
+     - Never more than 4 options.
+   - Whether free-text input is permitted (permitir_texto_libre)
+     - If false, hide the textbox and only show option buttons.
+   - Whether questions are permitted (permitir_preguntas) — typically true.
+   - Optional teacher hint (pista_profesor) for Spanish learning.
+   - Optional inventory updates.
+   - Progress tracking toward a story conclusion based on target length.
+
+4) Two Input Modes (UI Toggle):
+   - "Acción": In-story actions/responses that affect the narrative.
+   - "Pregunta": Out-of-story questions in Spanish (e.g., meaning of words, grammar, clarifications).
+     - The AI must answer briefly and then continue the story without derailing it.
+   - The UI should clearly show the current mode and send it to backend.
+
+5) Game Length / Pacing:
+   The player chooses duration:
+   - corta ≈ 12 turns
+   - media ≈ 25 turns
+   - larga ≈ 45 turns
+   The AI must:
+   - Track "progreso" from 0.0 to 1.0.
+   - Build toward a climax near the end.
+   - Provide a satisfying resolution around the final turns.
+
+6) Inventory (Lightweight):
+   Include an inventory panel and simple mechanics:
+   - Items: list of strings
+   - Optional clues: list of strings
+   - Keep MVP simple: allow adding/removing items based on story.
+   Inventory should be displayed in the UI and stored in state.
+
+7) Pagination / History Browsing:
+   - Store each completed turn in an array:
+     - user input (or selected option)
+     - AI narration
+     - AI options
+     - timestamp or turn number
+     - snapshot of state after the turn (optional but recommended)
+   - Show history with pagination: 10 turns per page, with Previous/Next page controls.
+   - Browsing history is read-only: do not alter past turns.
+
+AI RESPONSE FORMAT (MANDATORY JSON)
+-----------------------------------
+The backend MUST instruct the model to output ONLY JSON, matching this schema:
+
+{
+  "narracion": "Texto en español...",
+  "opciones": [
+    {"id":"A","texto":"..."},
+    {"id":"B","texto":"..."}
+    // optionally C, optionally D
+  ],
+  "permitir_texto_libre": true,
+  "permitir_preguntas": true,
+  "pista_profesor": "Consejo opcional (en español) o cadena vacía",
+  "inventario": {
+    "agregar": ["..."],
+    "quitar": ["..."]
+  },
+  "estado": {
+    "progreso": 0.0,
+    "tension": 0.0
+  },
+  "resumen_memoria": "Resumen corto de la historia hasta ahora (en español)"
+}
+
+Rules for opciones:
+- Count: 2 to 4.
+- IDs: must be "A", "B", "C", "D" in order.
+- Text must be Spanish and actionable.
+
+SYSTEM PROMPT (BEHAVIOR RULES)
+------------------------------
+Create a strong system prompt for the AI that enforces:
+- Output JSON only (no extra text, no markdown).
+- Spanish-only content ALWAYS.
+- Provide 2–4 options each turn depending on situation.
+- Keep the story consistent with the plot selection and game state.
+- Respect the chosen Spanish proficiency level (A2/B1/B2).
+- Respect target duration and progress pacing.
+- If input mode is "Pregunta", answer briefly and then return to story.
+- Occasionally set permitir_texto_libre=false when:
+  - the player is stuck
+  - a high-stakes branching moment needs structure
+  - the player goes far off-rails
+  Use this sparingly.
+- Provide a gentle Spanish hint (pista_profesor) occasionally (not every turn).
+
+CONTEXT MANAGEMENT / MEMORY
+---------------------------
+To reduce token usage and preserve continuity:
+- Maintain:
+  - A short "resumen_memoria" (update every turn, keep it concise)
+  - The last N turns (e.g., last 8) in detail
+  - The current game state (plot, level, duration, inventory, turn count, progreso, etc.)
+
+BACKEND REQUIREMENTS
+--------------------
+Implement Express backend with:
+- POST /api/turn
+  Request body includes:
+  - sessionId (string)
+  - mode ("Acción" | "Pregunta")
+  - userInput (string) OR selectedOptionId (string)
+  - state (object) including:
+      - spanishLevel ("A2"|"B1"|"B2")
+      - duration ("corta"|"media"|"larga")
+      - targetTurns (number)
+      - turnIndex (number)
+      - progreso (number)
+      - tension (number)
+      - plot (object)
+      - inventory (items/clues)
+      - resumen_memoria (string)
+  - recentHistory (array of recent turns, trimmed)
+
+  Response:
+  - The parsed JSON from the model response, validated and normalized.
+
+Additionally:
+- POST /api/start
+  - Initializes a new session state and returns:
+    - prompts/questions needed for start flow OR
+    - the AI-generated 3 plot hooks for user selection
+  - You can implement start flow either:
+    (A) front-end collects duration + level, then calls /api/start to get plots
+    (B) or /api/start returns a first AI message asking for duration/level and then continues
+  MVP suggestion:
+    - UI collects duration + level first.
+    - Then /api/start generates 3 plots.
+    - User chooses a plot.
+    - Then the first /api/turn begins the story.
+
+Validation / Robustness:
+- Validate the AI output is JSON.
+- If invalid, retry once with a stricter instruction.
+- Enforce opciones length between 2 and 4; if outside range, clamp/repair.
+- Enforce Spanish-only (best-effort; do not overcomplicate).
+
+ENVIRONMENT VARIABLES
+---------------------
+- OPENAI_API_KEY must be used server-side only.
+- Provide instructions for setting environment variables in Replit.
+
+FRONTEND REQUIREMENTS (REACT UI)
+--------------------------------
+Build a clean UI:
+- Header: game title, session controls (New Game button), current mode toggle.
+- Main chat area: shows narration and user messages.
+- Options area: dynamic buttons for A/B/C/D options from AI output.
+- Textbox:
+  - visible only if permitir_texto_libre is true
+  - otherwise hidden and replaced by buttons only
+- Mode toggle:
+  - Acción / Pregunta
+- Inventory panel:
+  - shows current items and clues
+- Pagination controls:
+  - view past turns, 10 per page
+  - allow reading earlier turns without affecting current state
+
+State handling:
+- Maintain a single authoritative game state in frontend based on backend responses.
+- After each turn, append to history and update state.
+
+RUN IN REPLIT
+-------------
+Provide:
+1) A complete folder structure that runs in Replit.
+2) Clear "Run" instructions:
+   - install deps
+   - set OPENAI_API_KEY
+   - start backend and frontend (or use a single dev server with proxy)
+3) If using Vite + Express, set up a proxy so frontend can call /api endpoints without CORS pain.
+
+DELIVERABLES REQUIRED
+---------------------
+Output MUST include:
+1) Repository / folder structure
+2) Backend code (Express server, /api/start, /api/turn)
+3) Frontend code (React UI)
+4) The system prompt string and how you send it to the model
+5) JSON schema expectations and any normalization logic
+6) Instructions to run locally AND in Replit
+
+BUILD NOW
+---------
+Build the MVP now. Make the code copy-paste runnable. Ensure:
+- Spanish-only UI labels
+- options count is dynamic (2–4)
+- pagination works
+- textbox hides when disabled
+- start flow produces 3 plots
+- progress tracking works toward ending
+- API key never touches frontend
