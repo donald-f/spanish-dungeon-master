@@ -17,7 +17,8 @@ import type {
 import { durationToTurns, aiResponseSchema } from "@shared/schema";
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
 });
 
 const SYSTEM_PROMPT = `Eres un maestro de mazmorras (Dungeon Master) experto en crear aventuras interactivas en español. Tu trabajo es narrar historias emocionantes y educativas que ayuden a los jugadores a practicar español.
