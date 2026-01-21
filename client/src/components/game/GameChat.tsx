@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Send, History, Lightbulb, Sword, HelpCircle, Trophy } from "lucide-react";
+import { Send, History, Lightbulb, Sword, HelpCircle, Trophy, X, MessageCircle } from "lucide-react";
 import type { GameState, InputMode, GameOption } from "@shared/schema";
 
 interface GameChatProps {
@@ -16,6 +16,8 @@ interface GameChatProps {
   onShowHistory: () => void;
   isLoading: boolean;
   gameEnded: boolean;
+  preguntaRespuesta?: string | null;
+  onDismissPregunta?: () => void;
 }
 
 export function GameChat({
@@ -26,6 +28,8 @@ export function GameChat({
   onShowHistory,
   isLoading,
   gameEnded,
+  preguntaRespuesta,
+  onDismissPregunta,
 }: GameChatProps) {
   const [textInput, setTextInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -143,6 +147,29 @@ export function GameChat({
             <div className="flex items-start gap-2 p-3 rounded-lg bg-accent/20 border border-accent/30">
               <Lightbulb className="h-4 w-4 text-accent mt-0.5 shrink-0" />
               <p className="text-sm">{gameState.currentPista}</p>
+            </div>
+          )}
+          
+          {preguntaRespuesta && (
+            <div className="flex items-start gap-2 p-4 rounded-lg bg-primary/10 border border-primary/30" data-testid="pregunta-respuesta">
+              <MessageCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-medium text-primary">Respuesta del Profesor</span>
+                  {onDismissPregunta && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={onDismissPregunta}
+                      data-testid="button-dismiss-pregunta"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+                <p className="text-sm">{preguntaRespuesta}</p>
+              </div>
             </div>
           )}
           

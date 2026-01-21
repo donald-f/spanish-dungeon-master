@@ -285,12 +285,55 @@ Genera la escena inicial que presenta el escenario y ofrece las primeras opcione
         progressGuidance = `Turno ${state.turnIndex + 1} de ${state.targetTurns}. El progreso debería estar alrededor de ${expectedProgress.toFixed(2)}.`;
       }
       
-      const turnMessage = mode === "Pregunta"
-        ? `El jugador hace una PREGUNTA sobre el español (no afecta la historia):
-"${playerAction}"
+      // Handle "Pregunta" mode separately - just answer the question without advancing story
+      if (mode === "Pregunta") {
+        const preguntaPrompt = `Eres un profesor de español amable y paciente. El estudiante está jugando una aventura de texto en español (nivel ${state.spanishLevel}) y tiene una pregunta.
 
-Responde brevemente a su pregunta y luego continúa la narración desde donde quedó.`
-        : `El jugador realiza una ACCIÓN en la historia:
+Contexto de la historia actual: "${state.plot.titulo}" - ${state.resumenMemoria}
+
+PREGUNTA DEL ESTUDIANTE: "${playerAction}"
+
+INSTRUCCIONES:
+1. Responde a la pregunta del estudiante de manera clara y concisa en español.
+2. Si la pregunta es sobre vocabulario, gramática o expresiones, explícalo brevemente.
+3. Si la pregunta es sobre la historia o el juego, responde basándote en el contexto dado.
+4. Si no conoces la respuesta o la pregunta no tiene sentido, di que no lo sabes amablemente.
+5. NO avances la historia. Solo responde la pregunta.
+6. Mantén la respuesta breve (2-4 oraciones máximo).
+
+Responde SOLO con el texto de tu respuesta, sin formato JSON.`;
+
+        const preguntaCompletion = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            { role: "user", content: preguntaPrompt }
+          ],
+          max_completion_tokens: 512,
+        });
+        
+        const respuesta = preguntaCompletion.choices[0]?.message?.content || "No pude entender tu pregunta. ¿Podrías reformularla?";
+        
+        // Return a special response for pregunta mode that doesn't advance the story
+        const response: TurnResponse = {
+          aiResponse: {
+            narracion: respuesta,
+            opciones: [], // Empty - indicates this is a pregunta response
+            permitir_texto_libre: true,
+            permitir_preguntas: true,
+            pista_profesor: "",
+            inventario: { agregar: [], quitar: [] },
+            estado: { progreso: state.progreso, tension: state.tension }, // Keep same state
+            resumen_memoria: state.resumenMemoria, // Keep same memory
+          },
+          gameEnded: false,
+          isPreguntaResponse: true, // Flag to indicate this was a question
+        };
+        
+        return res.json(response);
+      }
+
+      // Normal action mode - advance the story
+      const turnMessage = `El jugador realiza una ACCIÓN en la historia:
 "${playerAction}"
 
 Narra las consecuencias de esta acción y presenta nuevas opciones.`;
@@ -325,7 +368,8 @@ ${turnMessage}`
       
       const response: TurnResponse = {
         aiResponse,
-        gameEnded
+        gameEnded,
+        isPreguntaResponse: false,
       };
       
       res.json(response);

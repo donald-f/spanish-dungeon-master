@@ -88,10 +88,14 @@ export default function Game() {
     }
   }, [sessionId, selectedLevel, selectedDuration, toast]);
 
+  const [preguntaRespuesta, setPreguntaRespuesta] = useState<string | null>(null);
+
   const handleSendAction = useCallback(async (userInput?: string, selectedOptionId?: string) => {
     if (!gameState) return;
     
     setIsLoading(true);
+    setPreguntaRespuesta(null);
+    
     try {
       const response = await fetch("/api/turn", {
         method: "POST",
@@ -120,6 +124,14 @@ export default function Game() {
       
       const data = await response.json();
       
+      // Handle "Pregunta" mode - just show the answer, don't advance the turn
+      if (data.isPreguntaResponse) {
+        setPreguntaRespuesta(data.aiResponse.narracion);
+        setInputMode("Acción"); // Switch back to action mode after question
+        return;
+      }
+      
+      // Normal action - advance the story
       const newTurnEntry: TurnEntry = {
         turnNumber: gameState.turnIndex + 1,
         userInput: userInput || selectedOptionId || "",
@@ -158,6 +170,8 @@ export default function Game() {
         currentPista: data.aiResponse.pista_profesor,
         gameEnded: data.gameEnded,
       });
+      
+      setPreguntaRespuesta(null);
       
       if (data.gameEnded) {
         setPhase("ended");
@@ -284,6 +298,8 @@ export default function Game() {
                   onShowHistory={() => setShowHistory(true)}
                   isLoading={isLoading}
                   gameEnded={phase === "ended"}
+                  preguntaRespuesta={preguntaRespuesta}
+                  onDismissPregunta={() => setPreguntaRespuesta(null)}
                 />
               )}
             </div>
