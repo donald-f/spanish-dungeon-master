@@ -132,9 +132,16 @@ export default function Game() {
       }
       
       // Normal action - advance the story
+      // Get the full option text if the user selected an option
+      let displayInput = userInput || "";
+      if (selectedOptionId && !userInput) {
+        const selectedOption = gameState.currentOptions.find(opt => opt.id === selectedOptionId);
+        displayInput = selectedOption ? `${selectedOption.id}. ${selectedOption.texto}` : selectedOptionId;
+      }
+      
       const newTurnEntry: TurnEntry = {
         turnNumber: gameState.turnIndex + 1,
-        userInput: userInput || selectedOptionId || "",
+        userInput: displayInput,
         inputMode,
         narracion: data.aiResponse.narracion,
         opciones: data.aiResponse.opciones,

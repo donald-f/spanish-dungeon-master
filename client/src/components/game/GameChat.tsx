@@ -115,7 +115,8 @@ export function GameChat({
 
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
         <div className="space-y-6">
-          {gameState.history.slice(-3).map((turn, index) => (
+          {/* Show previous turns (excluding the current turn which is displayed separately) */}
+          {gameState.history.slice(-4, -1).map((turn, index) => (
             <div key={turn.turnNumber} className="space-y-3">
               {index > 0 && <Separator className="my-4" />}
               
@@ -124,21 +125,30 @@ export function GameChat({
                 <p className="font-medium">{turn.userInput}</p>
               </div>
               
-              <div className="story-text leading-relaxed whitespace-pre-wrap">
+              <div className="story-text leading-relaxed whitespace-pre-wrap text-muted-foreground">
                 {turn.narracion}
               </div>
               
               {turn.pistaProfesor && (
-                <div className="flex items-start gap-2 p-3 rounded-lg bg-accent/20 border border-accent/30">
-                  <Lightbulb className="h-4 w-4 text-accent mt-0.5 shrink-0" />
-                  <p className="text-sm">{turn.pistaProfesor}</p>
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-accent/10 border border-accent/20">
+                  <Lightbulb className="h-4 w-4 text-accent/70 mt-0.5 shrink-0" />
+                  <p className="text-sm text-muted-foreground">{turn.pistaProfesor}</p>
                 </div>
               )}
             </div>
           ))}
           
-          {gameState.history.length > 0 && <Separator className="my-4" />}
+          {gameState.history.length > 1 && <Separator className="my-4" />}
           
+          {/* Current turn: show the player's last action if there's history */}
+          {gameState.history.length > 0 && (
+            <div className="bg-muted/50 rounded-lg p-3">
+              <p className="text-sm text-muted-foreground">Tu acción:</p>
+              <p className="font-medium">{gameState.history[gameState.history.length - 1].userInput}</p>
+            </div>
+          )}
+          
+          {/* Current narration */}
           <div className="story-text leading-relaxed whitespace-pre-wrap">
             {gameState.currentNarracion}
           </div>
