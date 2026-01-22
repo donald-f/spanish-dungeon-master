@@ -127,7 +127,7 @@ export default function Game() {
       // Handle "Pregunta" mode - just show the answer, don't advance the turn
       if (data.isPreguntaResponse) {
         setPreguntaRespuesta(data.aiResponse.narracion);
-        setInputMode("Acción"); // Switch back to action mode after question
+        // Keep Pregunta mode - user must manually switch back to Acción
         return;
       }
       

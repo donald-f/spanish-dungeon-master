@@ -199,18 +199,18 @@ export function GameChat({
 
       {!gameEnded && (
         <CardContent className="border-t p-4 space-y-4">
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {gameState.currentOptions.map((option) => (
               <Button
                 key={option.id}
                 variant="outline"
-                className="flex-1 min-w-[45%] justify-start text-left h-auto py-3 px-4"
+                className="justify-start text-left h-auto py-3 px-4 whitespace-normal"
                 onClick={() => handleOptionClick(option)}
                 disabled={isLoading}
                 data-testid={`button-option-${option.id}`}
               >
                 <Badge variant="secondary" className="mr-2 shrink-0">{option.id}</Badge>
-                <span className="truncate">{option.texto}</span>
+                <span className="text-wrap">{option.texto}</span>
               </Button>
             ))}
           </div>
