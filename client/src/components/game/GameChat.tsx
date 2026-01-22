@@ -46,7 +46,8 @@ export function GameChat({
 
   const handleOptionClick = (option: GameOption) => {
     if (!isLoading && !gameEnded) {
-      onSendAction(undefined, option.id);
+      // Send the full option text so the AI knows exactly what action was chosen
+      onSendAction(option.texto, option.id);
     }
   };
 

@@ -134,11 +134,10 @@ export default function Game() {
       }
       
       // Normal action - advance the story
-      // Get the full option text if the user selected an option
+      // Format the display text: if option was selected, prefix with option ID
       let displayInput = userInput || "";
-      if (selectedOptionId && !userInput) {
-        const selectedOption = gameState.currentOptions.find(opt => opt.id === selectedOptionId);
-        displayInput = selectedOption ? `${selectedOption.id}. ${selectedOption.texto}` : selectedOptionId;
+      if (selectedOptionId && userInput) {
+        displayInput = `${selectedOptionId}. ${userInput}`;
       }
       
       const newTurnEntry: TurnEntry = {

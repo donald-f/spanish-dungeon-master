@@ -245,7 +245,15 @@ Genera la escena inicial que presenta el escenario y ofrece las primeras opcione
         plot: selectedPlot,
         inventory: { items: [], pistas: [] },
         resumenMemoria: aiResponse.resumen_memoria,
-        history: [],
+        history: [{
+          turnNumber: 1,
+          userInput: `Elegir: ${selectedPlot.titulo}`,
+          inputMode: "Acción" as const,
+          narracion: aiResponse.narracion,
+          opciones: aiResponse.opciones,
+          pistaProfesor: aiResponse.pista_profesor || "",
+          timestamp: Date.now(),
+        }],
         currentOptions: aiResponse.opciones,
         permitirTextoLibre: aiResponse.permitir_texto_libre,
         permitirPreguntas: aiResponse.permitir_preguntas,
@@ -273,7 +281,8 @@ Genera la escena inicial que presenta el escenario y ofrece las primeras opcione
         return res.status(404).json({ error: "Sesión no encontrada" });
       }
       
-      const playerAction = userInput || `Elijo la opción ${selectedOptionId}`;
+      // Use the full action text - userInput now contains the option text when clicking buttons
+      const playerAction = userInput || `Opción ${selectedOptionId}`;
       
       const historyContext = recentHistory.map(turn => 
         `Turno ${turn.turnNumber}:\nJugador (${turn.inputMode}): ${turn.userInput}\nNarrador: ${turn.narracion}`
@@ -344,29 +353,33 @@ Responde SOLO con el texto de tu respuesta, sin formato JSON.`;
       }
 
       // Normal action mode - advance the story
-      const turnMessage = `ACCIÓN QUE EL JUGADOR HA ELEGIDO (DEBES EJECUTAR EXACTAMENTE ESTA):
+      const turnMessage = `=== ACCIÓN ELEGIDA POR EL JUGADOR ===
 "${playerAction}"
+=== FIN DE LA ACCIÓN ===
 
-=== INSTRUCCIONES CRÍTICAS (LEE CUIDADOSAMENTE) ===
+REGLA OBLIGATORIA: Tu narración DEBE describir AL JUGADOR realizando EXACTAMENTE la acción de arriba.
 
-PASO 1: Identifica qué tipo de acción es:
-- ¿Es HABLAR con alguien? → La narración DEBE mostrar esa conversación
-- ¿Es EXAMINAR algo? → La narración DEBE describir lo que encuentra
-- ¿Es IR a algún lugar? → La narración DEBE estar en ese nuevo lugar
-- ¿Es TOMAR algo? → La narración DEBE mostrar al personaje tomando el objeto
+ANÁLISIS DE LA ACCIÓN:
+Lee la acción palabra por palabra. Si dice:
+- "Dejar que el gato se acerque" → El GATO se acerca, NO el jugador
+- "Hablar con X" → El jugador HABLA con X
+- "Examinar Y" → El jugador EXAMINA Y
+- "Esperar" → El jugador NO HACE NADA, solo observa
 
-PASO 2: Tu narración debe comenzar describiendo al personaje HACIENDO esa acción específica.
+PRIMERA ORACIÓN DE TU NARRACIÓN:
+- Debe describir EXACTAMENTE lo que dice la acción elegida
+- NO inventes acciones diferentes
+- NO hagas que el jugador haga algo que NO eligió
 
-EJEMPLOS DE LO QUE ESTÁ BIEN:
-- Si eligió "Hablar con el desconocido" → "Te acercas al desconocido y le dices..."
-- Si eligió "Examinar el cofre" → "Abres el cofre y dentro encuentras..."
-- Si eligió "Correr hacia el bosque" → "Corres hacia el bosque. Las ramas..."
+EJEMPLO CORRECTO:
+Acción: "Dejar que el gato se acerque al guardián"
+Narración: "Te quedas quieto mientras el gato camina lentamente hacia el guardián..."
 
-EJEMPLOS DE LO QUE ESTÁ MAL (NUNCA HAGAS ESTO):
-- Si eligió "Hablar con el desconocido" → "Decides correr..." ❌ INCORRECTO
-- Si eligió "Examinar el cofre" → "Hablas con alguien..." ❌ INCORRECTO
+EJEMPLO INCORRECTO (PROHIBIDO):
+Acción: "Dejar que el gato se acerque al guardián"
+Narración: "Das un paso al frente y te diriges al guardián..." ← ¡ERROR! El jugador NO eligió acercarse él mismo
 
-PROHIBIDO ABSOLUTAMENTE: Ignorar la acción elegida y narrar algo diferente.`;
+VERIFICA TU RESPUESTA: ¿Tu primera oración describe la MISMA acción que eligió el jugador?`;
 
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
