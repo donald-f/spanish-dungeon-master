@@ -31,11 +31,21 @@ REGLAS ABSOLUTAS:
 5. Las IDs de las opciones deben ser "A", "B", "C", "D" en orden.
 6. Mantén la coherencia con la trama seleccionada y el estado del juego.
 7. Respeta el ritmo de la historia según el progreso indicado.
-8. Cuando el modo es "Pregunta", responde brevemente a la pregunta del jugador sobre español y luego continúa la historia.
+
+COHERENCIA NARRATIVA (CRÍTICO - LEE CON ATENCIÓN):
+- La narración DEBE describir EXACTAMENTE la acción que el jugador eligió, NO una versión diferente.
+- Si el jugador eligió "examinar el compartimento", describe QUÉ VE en el compartimento, NO otra acción.
+- Si el jugador eligió "ir a casa", la escena DEBE estar en la casa, NO en el lugar anterior.
+- Si el jugador eligió "hablar con alguien", muestra ESA conversación específica.
+- NUNCA cambies o reinterpretes la acción del jugador. Ejecuta EXACTAMENTE lo que eligieron.
+- La narración debe empezar mostrando el resultado de la acción elegida.
+- Ejemplo MALO: Jugador elige "Examinar la habitación" → Narración: "Decides ir al jardín..."
+- Ejemplo BUENO: Jugador elige "Examinar la habitación" → Narración: "Miras alrededor de la habitación. Ves una cama vieja, un escritorio polvoriento..."
+- El "resumen_memoria" debe actualizarse para reflejar la nueva ubicación y situación del personaje.
 
 FORMATO DE RESPUESTA (JSON estricto):
 {
-  "narracion": "Texto narrativo en español describiendo la escena y los eventos...",
+  "narracion": "Texto narrativo en español describiendo la NUEVA escena DESPUÉS de que el jugador realizó su acción...",
   "opciones": [
     {"id": "A", "texto": "Primera opción de acción"},
     {"id": "B", "texto": "Segunda opción de acción"}
@@ -51,11 +61,12 @@ FORMATO DE RESPUESTA (JSON estricto):
     "progreso": 0.0,
     "tension": 0.0
   },
-  "resumen_memoria": "Resumen breve de la historia hasta ahora"
+  "resumen_memoria": "Resumen actualizado: incluye ubicación actual, objetos importantes, y eventos clave"
 }
 
 PAUTAS DE NARRACIÓN:
-- Usa descripciones vívidas y evocadoras
+- La narración describe lo que pasa DESPUÉS de la acción del jugador, no antes
+- Usa descripciones vívidas del NUEVO escenario o situación
 - Crea situaciones que requieran tomar decisiones
 - Incluye diálogos de personajes secundarios
 - Ocasionalmente, establece permitir_texto_libre=false para momentos críticos
@@ -333,10 +344,19 @@ Responde SOLO con el texto de tu respuesta, sin formato JSON.`;
       }
 
       // Normal action mode - advance the story
-      const turnMessage = `El jugador realiza una ACCIÓN en la historia:
+      const turnMessage = `ACCIÓN ELEGIDA POR EL JUGADOR:
 "${playerAction}"
 
-Narra las consecuencias de esta acción y presenta nuevas opciones.`;
+INSTRUCCIONES OBLIGATORIAS:
+1. Ejecuta EXACTAMENTE esta acción. NO la cambies por otra diferente.
+2. La narración debe describir el RESULTADO DIRECTO de esta acción específica.
+3. Si la acción es "examinar algo", describe qué encuentra al examinarlo.
+4. Si la acción es "ir a un lugar", la escena debe estar EN ese lugar.
+5. Si la acción es "hablar con alguien", muestra esa conversación.
+6. Las opciones deben ser coherentes con la nueva situación después de la acción.
+7. Actualiza resumen_memoria con: ubicación actual + objetos + eventos importantes.
+
+PROHIBIDO: Cambiar "examinar el compartimento" por "ir a hablar con alguien" u otra acción diferente.`;
 
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
