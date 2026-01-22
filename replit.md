@@ -15,6 +15,7 @@ A Spanish-only text-based adventure game where an AI acts as a dungeon master (D
 - **Progress Tracking**: Story paces toward chosen duration (corta/media/larga)
 - **History Browsing**: View past turns with pagination (10 per page)
 - **Dark Mode**: Toggle between light and dark themes
+- **Usage Limiting**: Monthly turn cap (1600 turns) to control AI costs (~$40/month max)
 
 ## Tech Stack
 - **Frontend**: React with TypeScript, Vite, TailwindCSS, Shadcn/UI components
@@ -36,8 +37,9 @@ client/
 │   │       └── HistoryPanel.tsx   # Turn history with pagination
 │   └── App.tsx
 server/
-├── routes.ts                 # API endpoints (/api/start, /api/turn, /api/select-plot)
+├── routes.ts                 # API endpoints (/api/start, /api/turn, /api/select-plot, /api/usage)
 ├── storage.ts                # In-memory session storage
+├── usageTracker.ts           # Monthly turn limit tracking (1600 turns = ~$40)
 └── index.ts
 shared/
 └── schema.ts                 # TypeScript types and Zod schemas
@@ -59,6 +61,10 @@ Selects a plot and starts the game with initial narration.
 Processes a player action or question and returns AI response.
 - Body: `{ sessionId, mode, userInput?, selectedOptionId?, state, recentHistory }`
 - Response: `{ aiResponse: AIResponse, gameEnded: boolean }`
+
+### GET /api/usage
+Returns current usage statistics for cost limiting.
+- Response: `{ used: number, remaining: number, limit: number, monthYear: string }`
 
 ## Game Flow
 1. **Setup**: Player selects Spanish level (A2/B1/B2) and duration (corta/media/larga)
