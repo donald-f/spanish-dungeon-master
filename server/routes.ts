@@ -15,6 +15,7 @@ import type {
   GameState
 } from "@shared/schema";
 import { durationToTurns, aiResponseSchema } from "@shared/schema";
+import { canPlayTurns, incrementTurnCount, getTurnsRemaining, getUsageStats } from "./usageTracker";
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -131,12 +132,27 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
+  app.get("/api/usage", (req, res) => {
+    res.json(getUsageStats());
+  });
+
   app.post("/api/start", async (req, res) => {
     try {
       const { spanishLevel, duration } = req.body as StartRequest;
       
-      const session = await storage.createSession(spanishLevel, duration);
       const targetTurns = durationToTurns[duration];
+      const remaining = getTurnsRemaining();
+      
+      if (remaining < targetTurns) {
+        return res.status(429).json({ 
+          error: "limit_reached",
+          message: `¡Este juego se ha vuelto muy popular! El límite mensual de turnos ha sido alcanzado. Solo quedan ${remaining} turnos disponibles este mes, pero una aventura "${duration}" necesita ${targetTurns} turnos. Por favor, intenta de nuevo el próximo mes o elige una aventura más corta.`,
+          turnsRemaining: remaining,
+          turnsNeeded: targetTurns
+        });
+      }
+      
+      const session = await storage.createSession(spanishLevel, duration);
       
       const prompt = PLOT_GENERATION_PROMPT
         .replace("{level}", spanishLevel)
@@ -264,6 +280,8 @@ Genera la escena inicial que presenta el escenario y ofrece las primeras opcione
       
       await storage.updateSession(sessionId, { gameState });
       
+      incrementTurnCount(1);
+      
       const response: SelectPlotResponse = { gameState };
       res.json(response);
     } catch (error) {
@@ -275,6 +293,13 @@ Genera la escena inicial que presenta el escenario y ofrece las primeras opcione
   app.post("/api/turn", async (req, res) => {
     try {
       const { sessionId, mode, userInput, selectedOptionId, state, recentHistory } = req.body as TurnRequest;
+      
+      if (!canPlayTurns(1)) {
+        return res.status(429).json({ 
+          error: "limit_reached",
+          message: "¡Este juego se ha vuelto muy popular! El límite mensual de turnos ha sido alcanzado. Por favor, intenta de nuevo el próximo mes. ¡Gracias por jugar!"
+        });
+      }
       
       const session = await storage.getSession(sessionId);
       if (!session) {
@@ -439,6 +464,8 @@ Responde SOLO con el texto de tu retroalimentación.`;
           console.error("Error getting grammar feedback:", grammarError);
         }
       }
+      
+      incrementTurnCount(1);
       
       const response: TurnResponse = {
         aiResponse,

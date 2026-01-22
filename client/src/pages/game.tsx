@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Scroll, RotateCcw, Sun, Moon } from "lucide-react";
+import { Scroll, RotateCcw, Sun, Moon, AlertTriangle } from "lucide-react";
 import type { GameState, SpanishLevel, Duration, PlotHook, InputMode, TurnEntry } from "@shared/schema";
 import { GameSetup } from "@/components/game/GameSetup";
 import { GameChat } from "@/components/game/GameChat";
@@ -24,6 +24,7 @@ export default function Game() {
   const [showHistory, setShowHistory] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [grammarFeedback, setGrammarFeedback] = useState<string | null>(null);
+  const [limitError, setLimitError] = useState<string | null>(null);
   const { toast } = useToast();
 
   const toggleDarkMode = useCallback(() => {
@@ -42,9 +43,17 @@ export default function Game() {
         body: JSON.stringify({ spanishLevel: level, duration }),
       });
       
-      if (!response.ok) throw new Error("Error al iniciar el juego");
-      
       const data = await response.json();
+      
+      if (!response.ok) {
+        if (data.error === "limit_reached") {
+          setLimitError(data.message);
+          return;
+        }
+        throw new Error("Error al iniciar el juego");
+      }
+      
+      setLimitError(null);
       setSessionId(data.sessionId);
       setPlots(data.plots);
       setPhase("selectPlot");
@@ -121,9 +130,15 @@ export default function Game() {
         }),
       });
       
-      if (!response.ok) throw new Error("Error al procesar la acción");
-      
       const data = await response.json();
+      
+      if (!response.ok) {
+        if (data.error === "limit_reached") {
+          setLimitError(data.message);
+          return;
+        }
+        throw new Error("Error al procesar la acción");
+      }
       
       // Handle "Pregunta" mode - just show the answer, don't advance the turn
       if (data.isPreguntaResponse) {
@@ -209,6 +224,7 @@ export default function Game() {
     setSessionId("");
     setInputMode("Acción");
     setShowHistory(false);
+    setLimitError(null);
   }, []);
 
   return (
@@ -254,6 +270,29 @@ export default function Game() {
       </header>
 
       <main className="container mx-auto px-4 py-6">
+        {limitError && (
+          <Card className="mb-6 border-destructive bg-destructive/10">
+            <CardContent className="p-6">
+              <div className="flex items-start gap-4">
+                <AlertTriangle className="h-6 w-6 text-destructive shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-semibold text-destructive mb-2">Límite de Uso Alcanzado</h3>
+                  <p className="text-sm">{limitError}</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-4"
+                    onClick={() => setLimitError(null)}
+                    data-testid="button-dismiss-limit-error"
+                  >
+                    Entendido
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
         {phase === "setup" && (
           <GameSetup
             onStart={handleStartGame}
