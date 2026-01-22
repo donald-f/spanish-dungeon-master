@@ -344,19 +344,29 @@ Responde SOLO con el texto de tu respuesta, sin formato JSON.`;
       }
 
       // Normal action mode - advance the story
-      const turnMessage = `ACCIÓN ELEGIDA POR EL JUGADOR:
+      const turnMessage = `ACCIÓN QUE EL JUGADOR HA ELEGIDO (DEBES EJECUTAR EXACTAMENTE ESTA):
 "${playerAction}"
 
-INSTRUCCIONES OBLIGATORIAS:
-1. Ejecuta EXACTAMENTE esta acción. NO la cambies por otra diferente.
-2. La narración debe describir el RESULTADO DIRECTO de esta acción específica.
-3. Si la acción es "examinar algo", describe qué encuentra al examinarlo.
-4. Si la acción es "ir a un lugar", la escena debe estar EN ese lugar.
-5. Si la acción es "hablar con alguien", muestra esa conversación.
-6. Las opciones deben ser coherentes con la nueva situación después de la acción.
-7. Actualiza resumen_memoria con: ubicación actual + objetos + eventos importantes.
+=== INSTRUCCIONES CRÍTICAS (LEE CUIDADOSAMENTE) ===
 
-PROHIBIDO: Cambiar "examinar el compartimento" por "ir a hablar con alguien" u otra acción diferente.`;
+PASO 1: Identifica qué tipo de acción es:
+- ¿Es HABLAR con alguien? → La narración DEBE mostrar esa conversación
+- ¿Es EXAMINAR algo? → La narración DEBE describir lo que encuentra
+- ¿Es IR a algún lugar? → La narración DEBE estar en ese nuevo lugar
+- ¿Es TOMAR algo? → La narración DEBE mostrar al personaje tomando el objeto
+
+PASO 2: Tu narración debe comenzar describiendo al personaje HACIENDO esa acción específica.
+
+EJEMPLOS DE LO QUE ESTÁ BIEN:
+- Si eligió "Hablar con el desconocido" → "Te acercas al desconocido y le dices..."
+- Si eligió "Examinar el cofre" → "Abres el cofre y dentro encuentras..."
+- Si eligió "Correr hacia el bosque" → "Corres hacia el bosque. Las ramas..."
+
+EJEMPLOS DE LO QUE ESTÁ MAL (NUNCA HAGAS ESTO):
+- Si eligió "Hablar con el desconocido" → "Decides correr..." ❌ INCORRECTO
+- Si eligió "Examinar el cofre" → "Hablas con alguien..." ❌ INCORRECTO
+
+PROHIBIDO ABSOLUTAMENTE: Ignorar la acción elegida y narrar algo diferente.`;
 
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -386,10 +396,42 @@ ${turnMessage}`
       
       const gameEnded = aiResponse.estado.progreso >= 1.0 || state.turnIndex >= state.targetTurns;
       
+      // If user typed free text (not selected an option), provide grammar feedback
+      let grammarFeedback: string | undefined;
+      if (userInput && userInput.trim().length > 0 && !selectedOptionId) {
+        try {
+          const grammarPrompt = `Eres un profesor de español amable. Analiza el siguiente texto escrito por un estudiante de nivel ${state.spanishLevel}.
+
+TEXTO DEL ESTUDIANTE: "${userInput}"
+
+INSTRUCCIONES:
+1. Ignora errores de puntuación (comas, puntos, etc.)
+2. Ignora errores de acentos (tildes)
+3. Solo señala errores de GRAMÁTICA y ORTOGRAFÍA (letras incorrectas, conjugaciones, género/número, etc.)
+4. Si hay errores, explica brevemente qué está mal y cómo corregirlo
+5. Si el texto es correcto (ignorando puntuación/acentos), di algo positivo como "¡Muy bien escrito!"
+6. Mantén la respuesta corta (2-3 oraciones máximo)
+7. Responde en español
+
+Responde SOLO con el texto de tu retroalimentación.`;
+
+          const grammarCompletion = await openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: [{ role: "user", content: grammarPrompt }],
+            max_completion_tokens: 256,
+          });
+          
+          grammarFeedback = grammarCompletion.choices[0]?.message?.content || undefined;
+        } catch (grammarError) {
+          console.error("Error getting grammar feedback:", grammarError);
+        }
+      }
+      
       const response: TurnResponse = {
         aiResponse,
         gameEnded,
         isPreguntaResponse: false,
+        grammarFeedback,
       };
       
       res.json(response);

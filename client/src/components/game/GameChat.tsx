@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Send, History, Lightbulb, Sword, HelpCircle, Trophy, X, MessageCircle } from "lucide-react";
+import { Send, History, Lightbulb, Sword, HelpCircle, Trophy, X, MessageCircle, PenTool } from "lucide-react";
 import type { GameState, InputMode, GameOption } from "@shared/schema";
 
 interface GameChatProps {
@@ -18,6 +18,8 @@ interface GameChatProps {
   gameEnded: boolean;
   preguntaRespuesta?: string | null;
   onDismissPregunta?: () => void;
+  grammarFeedback?: string | null;
+  onDismissGrammarFeedback?: () => void;
 }
 
 export function GameChat({
@@ -30,6 +32,8 @@ export function GameChat({
   gameEnded,
   preguntaRespuesta,
   onDismissPregunta,
+  grammarFeedback,
+  onDismissGrammarFeedback,
 }: GameChatProps) {
   const [textInput, setTextInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -170,15 +174,36 @@ export function GameChat({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6"
                       onClick={onDismissPregunta}
                       data-testid="button-dismiss-pregunta"
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-4 w-4" />
                     </Button>
                   )}
                 </div>
                 <p className="text-sm">{preguntaRespuesta}</p>
+              </div>
+            </div>
+          )}
+          
+          {grammarFeedback && (
+            <div className="flex items-start gap-2 p-4 rounded-lg bg-green-500/10 border border-green-500/30" data-testid="grammar-feedback">
+              <PenTool className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-medium text-green-600 dark:text-green-400">Corrección de Español</span>
+                  {onDismissGrammarFeedback && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={onDismissGrammarFeedback}
+                      data-testid="button-dismiss-grammar"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <p className="text-sm">{grammarFeedback}</p>
               </div>
             </div>
           )}

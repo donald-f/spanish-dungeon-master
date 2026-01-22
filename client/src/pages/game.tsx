@@ -23,6 +23,7 @@ export default function Game() {
   const [inputMode, setInputMode] = useState<InputMode>("Acción");
   const [showHistory, setShowHistory] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+  const [grammarFeedback, setGrammarFeedback] = useState<string | null>(null);
   const { toast } = useToast();
 
   const toggleDarkMode = useCallback(() => {
@@ -127,6 +128,7 @@ export default function Game() {
       // Handle "Pregunta" mode - just show the answer, don't advance the turn
       if (data.isPreguntaResponse) {
         setPreguntaRespuesta(data.aiResponse.narracion);
+        setGrammarFeedback(null); // Clear any grammar feedback when in pregunta mode
         // Keep Pregunta mode - user must manually switch back to Acción
         return;
       }
@@ -179,6 +181,13 @@ export default function Game() {
       });
       
       setPreguntaRespuesta(null);
+      
+      // Show grammar feedback if provided
+      if (data.grammarFeedback) {
+        setGrammarFeedback(data.grammarFeedback);
+      } else {
+        setGrammarFeedback(null);
+      }
       
       if (data.gameEnded) {
         setPhase("ended");
@@ -307,6 +316,8 @@ export default function Game() {
                   gameEnded={phase === "ended"}
                   preguntaRespuesta={preguntaRespuesta}
                   onDismissPregunta={() => setPreguntaRespuesta(null)}
+                  grammarFeedback={grammarFeedback}
+                  onDismissGrammarFeedback={() => setGrammarFeedback(null)}
                 />
               )}
             </div>

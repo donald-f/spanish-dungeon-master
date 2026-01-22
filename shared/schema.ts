@@ -137,6 +137,7 @@ export interface TurnResponse {
   aiResponse: AIResponse;
   gameEnded: boolean;
   isPreguntaResponse?: boolean;
+  grammarFeedback?: string;
 }
 
 // Legacy user schema (keep for compatibility)
