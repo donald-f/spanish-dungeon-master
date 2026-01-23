@@ -10,6 +10,9 @@ export type Duration = typeof durations[number];
 export const inputModes = ["Acción", "Pregunta"] as const;
 export type InputMode = typeof inputModes[number];
 
+export const dangerLevels = ["bajo", "medio", "alto"] as const;
+export type DangerLevel = typeof dangerLevels[number];
+
 // Duration to target turns mapping
 export const durationToTurns: Record<Duration, number> = {
   corta: 12,
@@ -39,10 +42,43 @@ export const inventorySchema = z.object({
 });
 export type Inventory = z.infer<typeof inventorySchema>;
 
-// AI response format
+// Danger indicator
+export const peligroSchema = z.object({
+  nivel: z.enum(dangerLevels),
+  razon: z.string(),
+});
+export type Peligro = z.infer<typeof peligroSchema>;
+
+// State change from action
+export const cambioEstadoSchema = z.object({
+  salud_delta: z.number().optional(),
+  estado_afectos_agregar: z.array(z.string()).optional(),
+  estado_afectos_quitar: z.array(z.string()).optional(),
+  banderas_agregar: z.array(z.string()).optional(),
+  banderas_quitar: z.array(z.string()).optional(),
+});
+export type CambioEstado = z.infer<typeof cambioEstadoSchema>;
+
+// Learning log entry
+export const learningEntrySchema = z.object({
+  tipo: z.enum(["correccion", "pregunta", "pista"]),
+  contenido: z.string(),
+  turno: z.number(),
+});
+export type LearningEntry = z.infer<typeof learningEntrySchema>;
+
+// Learning summary at game end
+export const resumenAprendizajesSchema = z.object({
+  puntos: z.array(z.string()),
+  errores_frecuentes: z.array(z.string()),
+  frases_utiles: z.array(z.string()),
+});
+export type ResumenAprendizajes = z.infer<typeof resumenAprendizajesSchema>;
+
+// AI response format (extended with consequences)
 export const aiResponseSchema = z.object({
   narracion: z.string(),
-  opciones: z.array(optionSchema).min(2).max(4),
+  opciones: z.array(optionSchema).min(0).max(4),
   permitir_texto_libre: z.boolean(),
   permitir_preguntas: z.boolean(),
   pista_profesor: z.string().optional(),
@@ -55,10 +91,18 @@ export const aiResponseSchema = z.object({
     tension: z.number().min(0).max(1),
   }),
   resumen_memoria: z.string(),
+  consecuencia: z.string().optional(),
+  peligro: peligroSchema.optional(),
+  cambio_estado: cambioEstadoSchema.optional(),
+  game_over: z.boolean().optional(),
+  game_over_razon: z.string().optional(),
+  final: z.boolean().optional(),
+  final_razon: z.string().optional(),
+  resumen_aprendizajes: resumenAprendizajesSchema.optional(),
 });
 export type AIResponse = z.infer<typeof aiResponseSchema>;
 
-// Turn history entry
+// Turn history entry (extended)
 export const turnEntrySchema = z.object({
   turnNumber: z.number(),
   userInput: z.string(),
@@ -67,10 +111,12 @@ export const turnEntrySchema = z.object({
   opciones: z.array(optionSchema),
   pistaProfesor: z.string().optional(),
   timestamp: z.number(),
+  consecuencia: z.string().optional(),
+  peligro: peligroSchema.optional(),
 });
 export type TurnEntry = z.infer<typeof turnEntrySchema>;
 
-// Game state
+// Game state (extended with health, status effects, flags)
 export const gameStateSchema = z.object({
   sessionId: z.string(),
   spanishLevel: z.enum(spanishLevels),
@@ -89,6 +135,15 @@ export const gameStateSchema = z.object({
   currentNarracion: z.string(),
   currentPista: z.string().optional(),
   gameEnded: z.boolean(),
+  salud: z.number().min(0).max(100),
+  estadoAfectos: z.array(z.string()),
+  banderas: z.array(z.string()),
+  learningLog: z.array(learningEntrySchema),
+  currentPeligro: peligroSchema.optional(),
+  currentConsecuencia: z.string().optional(),
+  gameOverRazon: z.string().optional(),
+  finalRazon: z.string().optional(),
+  resumenAprendizajes: resumenAprendizajesSchema.optional(),
 });
 export type GameState = z.infer<typeof gameStateSchema>;
 
@@ -129,6 +184,9 @@ export interface TurnRequest {
     plot: PlotHook;
     inventory: Inventory;
     resumenMemoria: string;
+    salud: number;
+    estadoAfectos: string[];
+    banderas: string[];
   };
   recentHistory: TurnEntry[];
 }

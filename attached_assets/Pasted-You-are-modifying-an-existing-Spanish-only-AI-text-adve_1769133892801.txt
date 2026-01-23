@@ -1,0 +1,228 @@
+You are modifying an existing Spanish-only AI text adventure game. 
+The game currently bends the story to keep progressing even when the player makes obviously reckless or fatal decisions. 
+I want you to enforce REAL danger, REAL failure, and REAL consequences.
+
+Reaching the end of the game must feel like an achievement.
+Failure must be possible, permanent, and believable.
+
+Everything shown to the player must be in Spanish.
+
+────────────────────────────────────────
+CORE DESIGN GOALS
+────────────────────────────────────────
+
+1. The world does NOT protect the player.
+2. The AI must NEVER rewrite enemy intent or danger just to keep the story moving.
+3. Some paths must be dead ends.
+4. Some mistakes should lead to immediate game over.
+5. Other mistakes should create delayed, nearly hopeless situations.
+6. Danger must be telegraphed clearly and fairly.
+7. The tone may be PG-13 graphic (injury, death, fear allowed; no explicit gore).
+
+────────────────────────────────────────
+CRITICAL BEHAVIOR CHANGES
+────────────────────────────────────────
+
+A) REAL CONSEQUENCES
+
+Player actions must have realistic outcomes based on the world.
+
+Examples (non-exhaustive):
+- An unarmed player rushing a burly man with a machete should likely die → GAME OVER.
+- Ignoring an obviously highlighted critical clue (e.g., a bottle with a message on a beach) can result in:
+  - a later dead-end (“Nunca llegaste a conocer los misterios…”) OR
+  - an immediate fail if it was time-sensitive.
+- Loud behavior in a stealth-required situation must have consequences:
+  - alerting enemies
+  - pursuit
+  - capture
+  - injury
+  - later forced failure
+
+Not all bad decisions must cause immediate death.
+Some should:
+- injure the player
+- remove future options
+- lock the player into a dangerous state
+- create a “hopeless struggle” where survival is possible but difficult
+
+────────────────────────────────────────
+B) NO STORY BENDING / NO FRIENDLY HOSTILES
+────────────────────────────────────────
+
+This is a hard rule.
+
+Hostile NPCs MUST remain hostile unless the player does something credibly effective:
+- escape
+- hide
+- surrender
+- bribe
+- distract
+- use leverage
+- obtain a weapon
+
+Absolutely forbidden behavior:
+- Turning an attack into a friendly conversation
+- Making enemies “curious” instead of violent to save the player
+- Reducing danger because the story needs to continue
+
+NPC intent must persist.
+
+────────────────────────────────────────
+C) FAIR DANGER (NO CHEAP DEATHS)
+────────────────────────────────────────
+
+Deaths and failures must feel earned.
+
+- High danger must be clearly telegraphed in narration.
+- The AI must explicitly signal danger level each turn.
+- No random or unexplained deaths.
+
+────────────────────────────────────────
+PLAYER / WORLD STATE (SERVER-SIDE)
+────────────────────────────────────────
+
+Track and pass these to the AI each turn:
+
+- salud (0–100)
+- estadoAfectos (array: herido, sangrando, asustado, agotado, etc.)
+- banderas / claves (story flags and missed clues)
+- inventario (already exists)
+- optional but recommended: ruido OR sigilo (0–100)
+
+Rules:
+- Fighting deadly enemies without weapons or leverage is usually fatal.
+- Injuries affect future options.
+- Missing key clues can make the ending impossible.
+
+────────────────────────────────────────
+AI RESPONSE FORMAT (EXTENDED JSON)
+────────────────────────────────────────
+
+Keep ALL existing fields exactly as they are:
+
+{
+  "narracion": "string",
+  "opciones": [{"id":"A|B|C|…", "texto":"string"}],
+  "permitir_texto_libre": boolean,
+  "permitir_preguntas": boolean,
+  "pista_profesor": "string (optional)",
+  "inventario": {"agregar": [], "quitar": []},
+  "estado": {"progreso": 0.0, "tension": 0.0},
+  "resumen_memoria": "string"
+}
+
+Number of options may vary per turn.
+
+Now ADD these required fields:
+
+{
+  "consecuencia": "string (Spanish; what happened due to the action)",
+  "peligro": {
+    "nivel": "bajo|medio|alto",
+    "razon": "string (Spanish explanation)"
+  },
+  "cambio_estado": {
+    "salud_delta": number,
+    "estado_afectos_agregar": ["string"],
+    "estado_afectos_quitar": ["string"],
+    "banderas_agregar": ["string"],
+    "banderas_quitar": ["string"]
+  },
+  "game_over": boolean,
+  "game_over_razon": "string (required if game_over=true)",
+  "final": boolean,
+  "final_razon": "string (required if final=true)"
+}
+
+Rules:
+- PG-13 descriptions allowed.
+- game_over must be true when death or permanent failure occurs.
+- final must be true only on successful endings.
+
+────────────────────────────────────────
+INPUT MODES (KEEP BOTH)
+────────────────────────────────────────
+
+Acción:
+- Treated as in-world behavior.
+- Consequences applied fully.
+
+Pregunta:
+- Answer briefly in Spanish.
+- Do NOT derail the story.
+- Always return to the scene afterward.
+- Still return story options.
+
+────────────────────────────────────────
+LEARNING TRACKING (NEW REQUIREMENT)
+────────────────────────────────────────
+
+Track Spanish learning events in a learningLog:
+
+- Corrections to player Spanish
+- Spanish questions asked
+- pista_profesor tips
+
+Store actual content from the session.
+
+At game end (victory OR game over), display:
+
+“Resumen de aprendizajes”
+
+Must include:
+- 0–15 concrete learning points from this run
+- Errores frecuentes (if applicable)
+- Frases útiles de la aventura (5–10)
+
+This summary must be based on the real learningLog, not generic content.
+
+Recommended output structure (only on end):
+
+{
+  "resumen_aprendizajes": {
+    "puntos": [],
+    "errores_frecuentes": [],
+    "frases_utiles": []
+  }
+}
+
+────────────────────────────────────────
+UI RULES
+────────────────────────────────────────
+
+- When permitir_texto_libre=false, hide textbox and show only buttons.
+- Use this for:
+  - locked moments
+  - critical decisions
+  - hopeless struggles
+
+Do not overuse.
+
+────────────────────────────────────────
+ACCEPTANCE TESTS (MUST PASS)
+────────────────────────────────────────
+
+- Unarmed charge at a machete enemy → realistic injury/death → game over.
+- Ignoring a clearly highlighted clue → later dead-end or failure.
+- Noisy behavior in stealth scenario → alarm, pursuit, injury, capture, or worse.
+- Hostile NPCs do NOT become friendly without credible cause.
+- End screen always includes Resumen de aprendizajes.
+
+────────────────────────────────────────
+IMPLEMENTATION INSTRUCTIONS
+────────────────────────────────────────
+
+Edit the existing project:
+- Update system / developer prompts
+- Update backend schema validation
+- Update frontend rendering
+- Add learningLog + end summary screen
+
+Do NOT rewrite from scratch unless absolutely necessary.
+
+Default assumptions if unclear:
+- PG-13 graphic descriptions allowed
+- Ignoring clues usually causes delayed dead-ends, not immediate death
+
+Proceed with implementation now.
