@@ -1,7 +1,7 @@
 # Aventura en Español - AI Dungeon Master Game
 
 ## Overview
-A Spanish-only text-based adventure game where an AI acts as a dungeon master (DM). The game helps players practice Spanish through interactive story narration, branching choices, and optional free-text input.
+A Spanish-only text-based adventure game where an AI acts as a dungeon master (DM). The game helps players practice Spanish through interactive story narration, branching choices, and optional free-text input. Features REAL DANGER where player decisions have meaningful consequences.
 
 ## Key Features
 - **Spanish-Only Gameplay**: All narration, dialogue, UI labels, and choices are in Spanish
@@ -16,6 +16,15 @@ A Spanish-only text-based adventure game where an AI acts as a dungeon master (D
 - **History Browsing**: View past turns with pagination (10 per page)
 - **Dark Mode**: Toggle between light and dark themes
 - **Usage Limiting**: Monthly turn cap (1600 turns) to control AI costs (~$40/month max)
+
+### Real Consequences System
+- **Health Tracking**: Player health (0-100) that can be damaged by reckless actions
+- **Status Effects**: States like "herido", "asustado", "agotado" affect gameplay
+- **Danger Indicators**: Each turn shows danger level (bajo/medio/alto) with explanation
+- **Real Death**: Stupid actions (attacking armed enemies unarmed) lead to game over
+- **Fair Warnings**: Danger is always telegraphed before it happens
+- **Story Flags**: Missed clues and important events are tracked, affecting endings
+- **Learning Summary**: At game end, shows what Spanish was learned during play
 
 ## Tech Stack
 - **Frontend**: React with TypeScript, Vite, TailwindCSS, Shadcn/UI components
@@ -32,7 +41,7 @@ client/
 │   ├── components/
 │   │   └── game/
 │   │       ├── GameSetup.tsx     # Level/duration selection
-│   │       ├── GameChat.tsx      # Main chat interface
+│   │       ├── GameChat.tsx      # Main chat interface with health/danger
 │   │       ├── InventoryPanel.tsx # Items and game state
 │   │       └── HistoryPanel.tsx   # Turn history with pagination
 │   └── App.tsx
@@ -69,10 +78,10 @@ Returns current usage statistics for cost limiting.
 ## Game Flow
 1. **Setup**: Player selects Spanish level (A2/B1/B2) and duration (corta/media/larga)
 2. **Plot Selection**: AI generates 3 unique plot hooks, player chooses one
-3. **Playing**: Turn-based loop with narration, options, and optional free-text
-4. **Completion**: Story concludes when progress reaches 1.0 or target turns reached
+3. **Playing**: Turn-based loop with narration, options, danger tracking, and health
+4. **Completion**: Story ends on victory (final=true), death (game_over=true), or max turns
 
-## AI Response Format
+## AI Response Format (Extended)
 ```json
 {
   "narracion": "Story text in Spanish...",
@@ -85,7 +94,28 @@ Returns current usage statistics for cost limiting.
   "pista_profesor": "Optional Spanish learning tip",
   "inventario": { "agregar": [], "quitar": [] },
   "estado": { "progreso": 0.0, "tension": 0.0 },
-  "resumen_memoria": "Story summary for context"
+  "resumen_memoria": "Story summary for context",
+  "consecuencia": "What happened due to the action",
+  "peligro": {
+    "nivel": "bajo|medio|alto",
+    "razon": "Why this danger level"
+  },
+  "cambio_estado": {
+    "salud_delta": 0,
+    "estado_afectos_agregar": [],
+    "estado_afectos_quitar": [],
+    "banderas_agregar": [],
+    "banderas_quitar": []
+  },
+  "game_over": false,
+  "game_over_razon": "Only if game_over=true",
+  "final": false,
+  "final_razon": "Only if final=true",
+  "resumen_aprendizajes": {
+    "puntos": [],
+    "errores_frecuentes": [],
+    "frases_utiles": []
+  }
 }
 ```
 
