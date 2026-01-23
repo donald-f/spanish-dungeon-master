@@ -113,9 +113,9 @@ export const aiResponseSchema = z.object({
   peligro: peligroSchema.optional(),
   cambio_estado: cambioEstadoSchema.optional(),
   game_over: z.boolean().optional(),
-  game_over_razon: z.string().optional(),
+  game_over_razon: z.string().nullable().optional().transform(v => v ?? ""),
   final: z.boolean().optional(),
-  final_razon: z.string().optional(),
+  final_razon: z.string().nullable().optional().transform(v => v ?? ""),
   resumen_aprendizajes: resumenAprendizajesSchema.optional(),
 });
 export type AIResponse = z.infer<typeof aiResponseSchema>;
