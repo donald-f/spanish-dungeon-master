@@ -1,0 +1,300 @@
+{
+    "ended": false,
+    "plots": [
+        {
+            "id": "1",
+            "titulo": "El secreto de la cueva oscura",
+            "descripcion": "Has escuchado rumores de una cueva en las montañas que guarda un extraño cristal mágico. Sin embargo, se dice que criaturas peligrosas protegen su interior y que muchos han desaparecido buscándolo. Ahora, tú decides explorarla, pero cada paso podría ser el último."
+        },
+        {
+            "id": "2",
+            "titulo": "La nave perdida",
+            "descripcion": "A bordo de una nave espacial antigua, despiertas del sueño criogénico solo para descubrir que algo salió mal. Los sistemas están fallando y no estás solo: una criatura alienígena está suelta en los pasillos. Debes actuar rápido si quieres sobrevivir y reparar la nave."
+        },
+        {
+            "id": "3",
+            "titulo": "El mapa prohibido",
+            "descripcion": "Encuentras un viejo mapa de un monasterio perdido, donde se oculta un tesoro fabuloso. Pero el viaje no será fácil: trampas, un bosque lleno de lobos hambrientos y guardias del monasterio te esperan. Lo que elijas hacer marcará la diferencia entre el éxito y el fracaso."
+        }
+    ],
+    "duration": "corta",
+    "gameState": {
+        "plot": {
+            "id": "1",
+            "titulo": "El secreto de la cueva oscura",
+            "descripcion": "Has escuchado rumores de una cueva en las montañas que guarda un extraño cristal mágico. Sin embargo, se dice que criaturas peligrosas protegen su interior y que muchos han desaparecido buscándolo. Ahora, tú decides explorarla, pero cada paso podría ser el último."
+        },
+        "salud": 30,
+        "history": [
+            {
+                "peligro": {
+                    "nivel": "bajo",
+                    "razon": "La entrada de la cueva parece tranquila, pero hay huellas que sugieren la posible presencia de algo más."
+                },
+                "opciones": [
+                    {
+                        "id": "A",
+                        "texto": "Entra directamente en la cueva."
+                    },
+                    {
+                        "id": "B",
+                        "texto": "Busca alrededor de la entrada pistas o herramientas."
+                    },
+                    {
+                        "id": "C",
+                        "texto": "Observa la entrada de la cueva y escucha en silencio."
+                    }
+                ],
+                "inputMode": "Acción",
+                "narracion": "Te encuentras al borde de una montaña, mirando hacia la entrada de la cueva oscura. El aire es frío y la niebla cubre el paisaje. La cueva parece tranquila, pero los rumores sobre criaturas peligrosas y desapariciones generan una inquietud en tu interior. Al acercarte, notas huellas en el suelo que parecen indicar que no estás solo. Tu decisión marcará el inicio de esta aventura.",
+                "timestamp": 1769194142064,
+                "userInput": "Elegir: El secreto de la cueva oscura",
+                "turnNumber": 1,
+                "consecuencia": "El jugador está al inicio de su aventura y debe tomar una decisión sobre cómo abordar la exploración de la cueva.",
+                "pistaProfesor": ""
+            },
+            {
+                "peligro": {
+                    "nivel": "medio",
+                    "razon": "Hay un sonido desconocido dentro de la cueva, lo que podría indicar una criatura hostil cercana."
+                },
+                "opciones": [
+                    {
+                        "id": "A",
+                        "texto": "Entras lentamente en la cueva, llevando la roca como defensa."
+                    },
+                    {
+                        "id": "B",
+                        "texto": "Retrocedes para inspeccionar el área externa en busca de más pistas."
+                    },
+                    {
+                        "id": "C",
+                        "texto": "Esperas y escuchas, intentando determinar de dónde viene el sonido."
+                    }
+                ],
+                "inputMode": "Acción",
+                "narracion": "Te inclinas cerca de la entrada de la cueva para buscar pistas o herramientas útiles. Encuentras una roca puntiaguda que podría servir como arma improvisada y algunos mechones de pelo oscuro atrapados en una raíz cercana, probablemente de alguna criatura. De repente, escuchas un leve gruñido desde el interior de la cueva, que te pone en alerta. Parece que no estás solo en esta oscuridad.",
+                "timestamp": 1769204126968,
+                "userInput": "Busca alrededor de la entrada pistas o herramientas.",
+                "turnNumber": 2,
+                "consecuencia": "El jugador se prepara para enfrentarse a un posible peligro y encuentra una roca como arma improvisada."
+            },
+            {
+                "peligro": {
+                    "nivel": "medio",
+                    "razon": "El ruido accidental alertó a una criatura posiblemente hostil dentro de la cueva."
+                },
+                "opciones": [
+                    {
+                        "id": "A",
+                        "texto": "Prepararte para enfrentarte a lo que salga de la cueva."
+                    },
+                    {
+                        "id": "B",
+                        "texto": "Intentar alejarte discretamente sin hacer más ruido."
+                    },
+                    {
+                        "id": "C",
+                        "texto": "Quedarte quieto y observar las sombras dentro de la cueva."
+                    }
+                ],
+                "inputMode": "Acción",
+                "narracion": "Retrocedes unos pasos para inspeccionar el área externa. Usas tus ojos y manos para buscar más pistas. Encuentras marcas de garra en una roca cercana y restos de comida: huesos roídos tirados entre las raíces. Esto confirma la presencia de una criatura cercana. Sin embargo, tu movimiento para alejarte de la cueva provoca un sonido involuntario al pisar una rama seca. El gruñido dentro de la cueva se hace más fuerte, indicando que lo que sea que estaba dentro ahora está alerta.",
+                "timestamp": 1769204185540,
+                "userInput": "Retrocedes para inspeccionar el área externa en busca de más pistas.",
+                "turnNumber": 3,
+                "consecuencia": "La criatura dentro de la cueva está ahora alerta por tu ruido accidental."
+            },
+            {
+                "peligro": {
+                    "nivel": "alto",
+                    "razon": "La criatura está alerta y ahora ha comenzado a atacar al jugador directamente."
+                },
+                "opciones": [
+                    {
+                        "id": "A",
+                        "texto": "Correr hacia la cueva con rapidez mientras la criatura está distraída"
+                    },
+                    {
+                        "id": "B",
+                        "texto": "Buscar un lugar seguro para esconderte en el exterior"
+                    }
+                ],
+                "inputMode": "Acción",
+                "narracion": "Decides crear una distracción para atraer a la criatura hacia afuera y tener la oportunidad de entrar a la cueva sin peligro. Recoges varias ramas secas cercanas y las agrupas en un lugar estratégico frente a la cueva. Frota la roca puntiaguda contra otra para intentar generar chispas y encender las ramas. Después de muchos intentos, logras que una pequeña llama se convierta en fuego. El ruido y el olor parecen llamar la atención de lo que sea que está dentro. Un par de ojos brillantes y amarillos aparece en la oscuridad de la entrada de la cueva. La criatura, grande y musculosa, con colmillos afilados y garras largas, se asoma. Gruñe de forma amenazante y comienza a caminar hacia el fuego. Sin embargo, no te has alejado lo suficiente y la criatura fija su mirada en ti, alterada por tu presencia. Se lanza hacia ti rápidamente, desgarrando el aire con sus garras. Logras esquivar, pero te lastima superficialmente en el proceso.",
+                "timestamp": 1769204328084,
+                "userInput": "Crea una diversión para atraer la bestia para después poder entrar en la cueva seguramente",
+                "turnNumber": 4,
+                "consecuencia": "La criatura salió de la cueva y atacó al jugador, quien sufrió una herida leve."
+            },
+            {
+                "peligro": {
+                    "nivel": "medio",
+                    "razon": "La criatura sigue activa cerca y logra atacar al jugador en el proceso."
+                },
+                "opciones": [
+                    {
+                        "id": "A",
+                        "texto": "Buscar un lugar dentro de la cueva para esconderte"
+                    },
+                    {
+                        "id": "B",
+                        "texto": "Examinar rápidamente el área en busca de algo útil"
+                    }
+                ],
+                "inputMode": "Acción",
+                "narracion": "Corres hacia la entrada de la cueva con toda la velocidad que puedes reunir. La criatura, distraída por el fuego, apenas nota tu movimiento al principio. Sin embargo, cada paso que das dentro de la cueva produce eco, atrayendo su atención. Sus ojos amarillos brillan y ruge con fuerza antes de correr hacia ti, alcanzándote justo en el borde del interior. Logras escabullirte lo suficiente para adentrarte en la cueva, pero no sin costo: la criatura te golpea con sus garras mientras intentas escapar por completo. Sangras ligeramente y te cuesta recuperar el equilibrio. Ahora estás dentro, en un espacio oscuro y claustrofóbico, con la criatura gruñendo y comenzando a seguirte más adentro. Por el momento, estás fuera de su vista directa, pero su presencia no se detiene.",
+                "timestamp": 1769204444243,
+                "userInput": "Correr hacia la cueva con rapidez mientras la criatura está distraída",
+                "turnNumber": 5,
+                "consecuencia": "El jugador entró a la cueva pero sufrió daño adicional y se encuentra en mayor peligro."
+            },
+            {
+                "peligro": {
+                    "nivel": "alto",
+                    "razon": "La criatura está persiguiendo al jugador y cualquier movimiento puede atraerla."
+                },
+                "opciones": [
+                    {
+                        "id": "A",
+                        "texto": "Mantenerte en silencio y esperar a que la criatura se aleje."
+                    },
+                    {
+                        "id": "B",
+                        "texto": "Intentar lanzar la roca puntiaguda lejos para distraerla y alejarla de ti."
+                    },
+                    {
+                        "id": "C",
+                        "texto": "Salir de tu escondite y correr más adentro hacia otra dirección."
+                    }
+                ],
+                "inputMode": "Acción",
+                "narracion": "Te apresuras hacia el interior de la cueva en busca de un lugar para esconderte, intentando evitar que la criatura te alcance. El espacio es oscuro y desesperante; apenas puedes ver por dónde vas. Encuentras una zona estrecha entre rocas grandes donde podrías encajar tu cuerpo y quedar parcialmente escondido. Mientras te acomodas, te raspas el brazo en las piedras afiladas, causando una herida adicional y aumentando el sangrado. Tu respiración es pesada y el sonido resuena por toda la cueva. La criatura, atraída por el eco de tu movimiento, se acerca al área. Escuchas su gruñido cada vez más cerca, pero de momento no te ha detectado por completo.",
+                "timestamp": 1769204538017,
+                "userInput": "Buscar un lugar dentro de la cueva para esconderte",
+                "turnNumber": 6,
+                "consecuencia": "El jugador ha logrado encontrar un refugio temporal, pero ha sufrido daño físico adicional por las piedras y está perdiendo sangre. La tensión aumenta con la proximidad de la criatura."
+            },
+            {
+                "peligro": {
+                    "nivel": "alto",
+                    "razon": "La criatura está consciente de la presencia del jugador y sigue sus movimientos. El sangrado afecta la capacidad del jugador para concentrarse y moverse rápido."
+                },
+                "opciones": [
+                    {
+                        "id": "A",
+                        "texto": "Buscar un objeto o herramienta en el área para defenderte del próximo ataque."
+                    },
+                    {
+                        "id": "B",
+                        "texto": "Intentar subir a una roca elevada para tener ventaja contra la criatura."
+                    },
+                    {
+                        "id": "C",
+                        "texto": "Ocultarte de nuevo en otro lugar más profundo en la cueva."
+                    }
+                ],
+                "inputMode": "Acción",
+                "narracion": "Con tus manos temblorosas, lanzas la roca puntiaguda lo más lejos posible hacia el interior de la cueva, intentando distraer a la criatura. El sonido del impacto contra las paredes reverbera en la cueva, creando ecos metálicos que parecen capturar la atención de la criatura. Por un breve momento, notas que el gruñido y el movimiento se desvían hacia el ruido. Aprovechas la oportunidad y comienzas a adentrarte más profundamente, corriendo torpemente mientras tratas de evitar tropezarte en la oscuridad. Sin embargo, tu estado de sangrado y desesperación hace que pierdas algo de concentración: te golpeas contra una roca baja al avanzar, causando otra pequeña herida en tu pierna. A pesar del dolor, logras avanzar algunos metros más antes de detenerte a recuperar aliento. La criatura, aunque distraída por el lanzamiento inicial, parece haber detectado nuevamente tu presencia, ya que escuchas sus pasos pesados aproximándose lentamente hacia ti.",
+                "timestamp": 1769204663323,
+                "userInput": "Intentar lanzar la roca puntiaguda lejos para distraerla y alejarla de ti. Después adentrarme mas profundamente",
+                "turnNumber": 7,
+                "consecuencia": "Aunque la criatura fue distraída brevemente, ahora está nuevamente siguiendo al jugador. Este perdió su arma improvisada pero logró avanzar más en la cueva, sufriendo otra pequeña herida en su pierna al moverse descuidadamente por la oscuridad."
+            },
+            {
+                "peligro": {
+                    "nivel": "alto",
+                    "razon": "El jugador está herido y sangrando, mientras la criatura está muy cerca de él. La tensión en la situación es máxima."
+                },
+                "opciones": [
+                    {
+                        "id": "A",
+                        "texto": "Buscar alguna otra alternativa rápidamente y correr hacia zonas más oscuras en la cueva."
+                    },
+                    {
+                        "id": "B",
+                        "texto": "Intentar usar las rocas como barrera, enfrentarte y resistir a la criatura con las manos desnudas."
+                    },
+                    {
+                        "id": "C",
+                        "texto": "Quedarte inmóvil y esperar que la criatura se acerque, preparado para esquivar."
+                    }
+                ],
+                "inputMode": "Acción",
+                "narracion": "Decides intentar subir a una roca elevada dentro de la cueva, buscando una ventaja contra la criatura que te persigue. En tu estado actual, con heridas y cansancio, la subida se torna complicada. Tus manos, húmedas de sudor y sangre, pierden agarre en las superficies resbaladizas. Logras avanzar parcialmente, pero en el segundo intento tu pie resbala en una curva de la roca, haciéndote caer unos metros. El impacto contra el suelo te provoca una nueva herida en la espalda, mientras tu respiración te delata con ecos. Escuchas el gruñido cercano de la criatura que ya parece haberte ubicado por completo. Si bien logras levantarte, ahora estás más vulnerable que antes.",
+                "timestamp": 1769204786106,
+                "userInput": "Intentar subir a una roca elevada para tener ventaja contra la criatura.",
+                "turnNumber": 8,
+                "consecuencia": "La caída generó una nueva herida y llamó la atención de la criatura."
+            }
+        ],
+        "peligro": {
+            "nivel": "alto",
+            "razon": "El jugador está herido y sangrando, mientras la criatura está muy cerca de él. La tensión en la situación es máxima."
+        },
+        "tension": 0.9,
+        "banderas": [
+            "gruñido_escuchado",
+            "criatura_alertada",
+            "herida_superficial",
+            "entro_cueva",
+            "creatura_detras",
+            "criatura_persigue_nuevamente",
+            "criatura_extremadamente_cercana"
+        ],
+        "duration": "corta",
+        "progreso": 0.68,
+        "gameEnded": false,
+        "inventory": {
+            "items": [],
+            "pistas": []
+        },
+        "sessionId": "adc92f8b-7dac-457f-ba2f-8e216b61d134",
+        "turnIndex": 8,
+        "learningLog": [],
+        "targetTurns": 12,
+        "consecuencia": "La caída generó una nueva herida y llamó la atención de la criatura.",
+        "spanishLevel": "A2",
+        "estadoAfectos": [
+            "alerta",
+            "herido",
+            "asustado",
+            "sangrando",
+            "desesperado",
+            "cansado",
+            "herido_grave"
+        ],
+        "currentOptions": [
+            {
+                "id": "A",
+                "texto": "Buscar alguna otra alternativa rápidamente y correr hacia zonas más oscuras en la cueva."
+            },
+            {
+                "id": "B",
+                "texto": "Intentar usar las rocas como barrera, enfrentarte y resistir a la criatura con las manos desnudas."
+            },
+            {
+                "id": "C",
+                "texto": "Quedarte inmóvil y esperar que la criatura se acerque, preparado para esquivar."
+            }
+        ],
+        "currentPeligro": {
+            "nivel": "bajo",
+            "razon": "La entrada de la cueva parece tranquila, pero hay huellas que sugieren la posible presencia de algo más."
+        },
+        "resumenMemoria": "El jugador intentó subir a una roca para obtener ventaja, pero cayó, sufriendo daño adicional. La criatura ahora está casi encima de él, aumentando la tensión y el riesgo.",
+        "currentNarracion": "Te encuentras al borde de una montaña, mirando hacia la entrada de la cueva oscura. El aire es frío y la niebla cubre el paisaje. La cueva parece tranquila, pero los rumores sobre criaturas peligrosas y desapariciones generan una inquietud en tu interior. Al acercarte, notas huellas en el suelo que parecen indicar que no estás solo. Tu decisión marcará el inicio de esta aventura.",
+        "currentNarration": "Decides intentar subir a una roca elevada dentro de la cueva, buscando una ventaja contra la criatura que te persigue. En tu estado actual, con heridas y cansancio, la subida se torna complicada. Tus manos, húmedas de sudor y sangre, pierden agarre en las superficies resbaladizas. Logras avanzar parcialmente, pero en el segundo intento tu pie resbala en una curva de la roca, haciéndote caer unos metros. El impacto contra el suelo te provoca una nueva herida en la espalda, mientras tu respiración te delata con ecos. Escuchas el gruñido cercano de la criatura que ya parece haberte ubicado por completo. Si bien logras levantarte, ahora estás más vulnerable que antes.",
+        "permitirPreguntas": true,
+        "permitirTextoLibre": true,
+        "currentConsecuencia": "El jugador está al inicio de su aventura y debe tomar una decisión sobre cómo abordar la exploración de la cueva.",
+        "resumenAprendizajes": {
+            "puntos": [],
+            "frases_utiles": [],
+            "errores_frecuentes": [
+                "Corrección: \"Crea una diversión para atraer la bestia para después poder entrar en la cueva seguramente\" → El texto tiene un pequeño error gramatical en \"seguramente\". Debería ser \"de forma segura\" o \"seguro\", ya que \"seguramente\" implica probabilidad, no seguridad. ¡Buen trabajo con la construcción de la oración!"
+            ]
+        }
+    },
+    "spanishLevel": "A2"
+}
