@@ -278,8 +278,8 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
-  app.get("/api/usage", (req, res) => {
-    res.json(getUsageStats());
+  app.get("/api/usage", async (req, res) => {
+    res.json(await getUsageStats());
   });
 
   app.post("/api/start", async (req, res) => {
@@ -287,7 +287,7 @@ export async function registerRoutes(
       const { spanishLevel, duration } = req.body as StartRequest;
       
       const targetTurns = durationToTurns[duration];
-      const remaining = getTurnsRemaining();
+      const remaining = await getTurnsRemaining();
       
       if (remaining < targetTurns) {
         return res.status(429).json({ 
@@ -441,7 +441,7 @@ Indica el nivel de peligro inicial de la situación.`
       
       await storage.updateSession(sessionId, { gameState });
       
-      incrementTurnCount(1);
+      await incrementTurnCount(1);
       
       const response: SelectPlotResponse = { gameState };
       res.json(response);
@@ -455,7 +455,7 @@ Indica el nivel de peligro inicial de la situación.`
     try {
       const { sessionId, mode, userInput, selectedOptionId, state, recentHistory } = req.body as TurnRequest;
       
-      if (!canPlayTurns(1)) {
+      if (!(await canPlayTurns(1))) {
         return res.status(429).json({ 
           error: "limit_reached",
           message: "¡Este juego se ha vuelto muy popular! El límite mensual de turnos ha sido alcanzado. Por favor, intenta de nuevo el próximo mes. ¡Gracias por jugar!"
@@ -638,7 +638,7 @@ Responde SOLO con el texto de tu retroalimentación.`;
         }
       }
       
-      incrementTurnCount(1);
+      await incrementTurnCount(1);
       
       const response: TurnResponse = {
         aiResponse,

@@ -1,4 +1,21 @@
 import { z } from "zod";
+import { pgTable, text, jsonb, timestamp, integer, primaryKey } from "drizzle-orm/pg-core";
+
+// Database tables (Drizzle ORM)
+export const gameSessions = pgTable("game_sessions", {
+  id: text("id").primaryKey(),
+  state: jsonb("state"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const usageTracking = pgTable("usage_tracking", {
+  year: integer("year").notNull(),
+  month: integer("month").notNull(),
+  turnsUsed: integer("turns_used").notNull().default(0),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.year, table.month] }),
+}));
 
 // Game configuration options
 export const spanishLevels = ["A2", "B1", "B2"] as const;

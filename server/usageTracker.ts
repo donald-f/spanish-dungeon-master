@@ -1,71 +1,67 @@
-import * as fs from "fs";
-import * as path from "path";
-
-const USAGE_FILE = path.join(process.cwd(), "usage_data.json");
+import { usageTracking } from "@shared/schema";
+import { db } from "./db";
+import { eq, and } from "drizzle-orm";
 
 const MONTHLY_TURN_LIMIT = 1600;
 
-interface UsageData {
-  totalTurns: number;
-  monthYear: string;
-}
-
-function getCurrentMonthYear(): string {
+function getCurrentYearMonth(): { year: number; month: number } {
   const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  return { year: now.getFullYear(), month: now.getMonth() + 1 };
 }
 
-function loadUsageData(): UsageData {
-  try {
-    if (fs.existsSync(USAGE_FILE)) {
-      const data = JSON.parse(fs.readFileSync(USAGE_FILE, "utf-8"));
-      if (data.monthYear === getCurrentMonthYear()) {
-        return data;
-      }
-    }
-  } catch (error) {
-    console.error("Error loading usage data:", error);
+async function getOrCreateUsageRecord(): Promise<{ year: number; month: number; turnsUsed: number }> {
+  const { year, month } = getCurrentYearMonth();
+  
+  const [existing] = await db.select()
+    .from(usageTracking)
+    .where(and(eq(usageTracking.year, year), eq(usageTracking.month, month)));
+  
+  if (existing) {
+    return existing;
   }
-  return { totalTurns: 0, monthYear: getCurrentMonthYear() };
+  
+  await db.insert(usageTracking).values({
+    year,
+    month,
+    turnsUsed: 0,
+  });
+  
+  return { year, month, turnsUsed: 0 };
 }
 
-function saveUsageData(data: UsageData): void {
-  try {
-    fs.writeFileSync(USAGE_FILE, JSON.stringify(data, null, 2));
-  } catch (error) {
-    console.error("Error saving usage data:", error);
-  }
+export async function getTurnsUsed(): Promise<number> {
+  const record = await getOrCreateUsageRecord();
+  return record.turnsUsed;
 }
 
-export function getTurnsUsed(): number {
-  const data = loadUsageData();
-  return data.totalTurns;
+export async function getTurnsRemaining(): Promise<number> {
+  return MONTHLY_TURN_LIMIT - await getTurnsUsed();
 }
 
-export function getTurnsRemaining(): number {
-  return MONTHLY_TURN_LIMIT - getTurnsUsed();
+export async function canPlayTurns(turnsNeeded: number): Promise<boolean> {
+  return (await getTurnsRemaining()) >= turnsNeeded;
 }
 
-export function canPlayTurns(turnsNeeded: number): boolean {
-  return getTurnsRemaining() >= turnsNeeded;
-}
-
-export function incrementTurnCount(count: number = 1): void {
-  const data = loadUsageData();
-  data.totalTurns += count;
-  saveUsageData(data);
+export async function incrementTurnCount(count: number = 1): Promise<void> {
+  const { year, month } = getCurrentYearMonth();
+  const record = await getOrCreateUsageRecord();
+  
+  await db.update(usageTracking)
+    .set({ turnsUsed: record.turnsUsed + count })
+    .where(and(eq(usageTracking.year, year), eq(usageTracking.month, month)));
 }
 
 export function getMonthlyLimit(): number {
   return MONTHLY_TURN_LIMIT;
 }
 
-export function getUsageStats(): { used: number; remaining: number; limit: number; monthYear: string } {
-  const data = loadUsageData();
+export async function getUsageStats(): Promise<{ used: number; remaining: number; limit: number; monthYear: string }> {
+  const record = await getOrCreateUsageRecord();
+  const monthYear = `${record.year}-${String(record.month).padStart(2, "0")}`;
   return {
-    used: data.totalTurns,
-    remaining: MONTHLY_TURN_LIMIT - data.totalTurns,
+    used: record.turnsUsed,
+    remaining: MONTHLY_TURN_LIMIT - record.turnsUsed,
     limit: MONTHLY_TURN_LIMIT,
-    monthYear: data.monthYear,
+    monthYear,
   };
 }
