@@ -11,6 +11,7 @@ export interface GameSession {
   plots?: PlotHook[];
   gameState?: GameState;
   createdAt: number;
+  ended?: boolean;
 }
 
 export interface IStorage {
@@ -60,6 +61,7 @@ function dbRowToSession(row: typeof gameSessions.$inferSelect): GameSession {
     plots: state?.plots,
     gameState: state?.gameState ? applySchemaDefaults(state.gameState) : undefined,
     createdAt: row.createdAt.getTime(),
+    ended: row.ended,
   };
 }
 
@@ -103,11 +105,13 @@ export class DatabaseStorage implements IStorage {
       duration: updates.duration ?? existing.duration,
       plots: updates.plots ?? existing.plots,
       gameState: updates.gameState ?? existing.gameState,
+      ended: updates.ended ?? existing.ended ?? false,
     };
     
     await db.update(gameSessions)
       .set({ 
         state: newState,
+        ended: newState.ended,
         updatedAt: new Date(),
       })
       .where(eq(gameSessions.id, sessionId));

@@ -663,6 +663,86 @@ Responde SOLO con el texto de tu retroalimentación.`;
       
       await incrementTurnCount(1);
       
+      // Update game state in database - use session.gameState from DB as authoritative source
+      const dbState = session.gameState!;
+      
+      let newSalud = dbState.salud ?? 100;
+      if (aiResponse.cambio_estado?.salud_delta) {
+        newSalud = Math.max(0, Math.min(100, newSalud + aiResponse.cambio_estado.salud_delta));
+      }
+      
+      let newEstadoAfectos = [...(dbState.estadoAfectos || [])];
+      const cambioEstado = aiResponse.cambio_estado;
+      if (cambioEstado?.estado_afectos_agregar) {
+        newEstadoAfectos = Array.from(new Set([...newEstadoAfectos, ...cambioEstado.estado_afectos_agregar]));
+      }
+      if (cambioEstado?.estado_afectos_quitar) {
+        newEstadoAfectos = newEstadoAfectos.filter(
+          e => !cambioEstado.estado_afectos_quitar?.includes(e)
+        );
+      }
+      
+      let newBanderas = [...(dbState.banderas || [])];
+      if (cambioEstado?.banderas_agregar) {
+        newBanderas = Array.from(new Set([...newBanderas, ...cambioEstado.banderas_agregar]));
+      }
+      if (cambioEstado?.banderas_quitar) {
+        newBanderas = newBanderas.filter(
+          b => !cambioEstado.banderas_quitar?.includes(b)
+        );
+      }
+      
+      let newItems = [...(dbState.inventory?.items || [])];
+      const inventarioChanges = aiResponse.inventario;
+      if (inventarioChanges?.agregar) {
+        newItems = Array.from(new Set([...newItems, ...inventarioChanges.agregar]));
+      }
+      if (inventarioChanges?.quitar) {
+        newItems = newItems.filter(item => !inventarioChanges.quitar?.includes(item));
+      }
+      
+      const newHistory = [
+        ...(dbState.history || []),
+        {
+          turnNumber: dbState.turnIndex + 1,
+          userInput: playerAction,
+          inputMode: mode as "Acción" | "Pregunta",
+          narracion: aiResponse.narracion,
+          opciones: aiResponse.opciones,
+          consecuencia: aiResponse.consecuencia,
+          peligro: aiResponse.peligro,
+          pistaProfesor: aiResponse.pista_profesor,
+          timestamp: Date.now(),
+        }
+      ];
+      
+      const updatedGameState = {
+        ...dbState,
+        sessionId,
+        turnIndex: dbState.turnIndex + 1,
+        salud: newSalud,
+        estadoAfectos: newEstadoAfectos,
+        banderas: newBanderas,
+        inventory: { items: newItems, pistas: dbState.inventory?.pistas || [] },
+        currentNarration: aiResponse.narracion,
+        currentOptions: aiResponse.opciones,
+        permitirTextoLibre: aiResponse.permitir_texto_libre,
+        permitirPreguntas: aiResponse.permitir_preguntas,
+        peligro: aiResponse.peligro,
+        pistaProfesor: aiResponse.pista_profesor,
+        consecuencia: aiResponse.consecuencia,
+        resumenMemoria: aiResponse.resumen_memoria || dbState.resumenMemoria,
+        progreso: aiResponse.estado?.progreso ?? dbState.progreso ?? 0,
+        tension: aiResponse.estado?.tension ?? dbState.tension ?? 0,
+        history: newHistory,
+        resumenAprendizajes: aiResponse.resumen_aprendizajes || dbState.resumenAprendizajes,
+      };
+      
+      await storage.updateSession(sessionId, { 
+        gameState: updatedGameState,
+        ended: gameEnded 
+      });
+      
       const response: TurnResponse = {
         aiResponse,
         gameEnded,

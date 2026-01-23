@@ -1,10 +1,11 @@
 import { z } from "zod";
-import { pgTable, text, jsonb, timestamp, integer, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, jsonb, timestamp, integer, primaryKey, boolean } from "drizzle-orm/pg-core";
 
 // Database tables (Drizzle ORM)
 export const gameSessions = pgTable("game_sessions", {
   id: text("id").primaryKey(),
   state: jsonb("state"),
+  ended: boolean("ended").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
