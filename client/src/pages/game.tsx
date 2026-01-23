@@ -255,7 +255,7 @@ export default function Game() {
       
       let newEstadoAfectos = [...(gameState.estadoAfectos || [])];
       if (data.aiResponse.cambio_estado?.estado_afectos_agregar) {
-        newEstadoAfectos = [...new Set([...newEstadoAfectos, ...data.aiResponse.cambio_estado.estado_afectos_agregar])];
+        newEstadoAfectos = Array.from(new Set([...newEstadoAfectos, ...data.aiResponse.cambio_estado.estado_afectos_agregar]));
       }
       if (data.aiResponse.cambio_estado?.estado_afectos_quitar) {
         newEstadoAfectos = newEstadoAfectos.filter(
@@ -265,7 +265,7 @@ export default function Game() {
       
       let newBanderas = [...(gameState.banderas || [])];
       if (data.aiResponse.cambio_estado?.banderas_agregar) {
-        newBanderas = [...new Set([...newBanderas, ...data.aiResponse.cambio_estado.banderas_agregar])];
+        newBanderas = Array.from(new Set([...newBanderas, ...data.aiResponse.cambio_estado.banderas_agregar]));
       }
       if (data.aiResponse.cambio_estado?.banderas_quitar) {
         newBanderas = newBanderas.filter(
