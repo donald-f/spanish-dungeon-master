@@ -1,17 +1,18 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Backpack, Key, Flame, Target } from "lucide-react";
-import type { Inventory } from "@shared/schema";
+import { Backpack, Key, Flame, Target, Shield, AlertTriangle, Zap } from "lucide-react";
+import type { Inventory, Peligro } from "@shared/schema";
 
 interface InventoryPanelProps {
   inventory: Inventory;
   turnNumber: number;
   targetTurns: number;
   tension: number;
+  peligro?: Peligro;
 }
 
-export function InventoryPanel({ inventory, turnNumber, targetTurns, tension }: InventoryPanelProps) {
+export function InventoryPanel({ inventory, turnNumber, targetTurns, tension, peligro }: InventoryPanelProps) {
   const tensionLevel = tension < 0.3 ? "Tranquilo" : tension < 0.6 ? "Tenso" : tension < 0.8 ? "Intenso" : "Crítico";
   const tensionColor = tension < 0.3 
     ? "text-green-600 dark:text-green-400" 
@@ -20,6 +21,13 @@ export function InventoryPanel({ inventory, turnNumber, targetTurns, tension }: 
     : tension < 0.8 
     ? "text-orange-600 dark:text-orange-400" 
     : "text-red-600 dark:text-red-400";
+
+  const peligroConfig = {
+    bajo: { label: "Bajo", color: "text-green-600 dark:text-green-400", icon: Shield },
+    medio: { label: "Medio", color: "text-yellow-600 dark:text-yellow-400", icon: AlertTriangle },
+    alto: { label: "Alto", color: "text-red-600 dark:text-red-400", icon: Zap },
+  };
+  const peligroInfo = peligro ? peligroConfig[peligro.nivel] : null;
 
   return (
     <div className="space-y-4 sticky top-24">
@@ -48,6 +56,18 @@ export function InventoryPanel({ inventory, turnNumber, targetTurns, tension }: 
               {tensionLevel}
             </span>
           </div>
+          
+          {peligroInfo && (
+            <div className="flex items-center justify-between" data-testid="danger-level">
+              <div className="flex items-center gap-2">
+                <peligroInfo.icon className="h-4 w-4" />
+                <span className="text-sm text-muted-foreground">Peligro</span>
+              </div>
+              <span className={`text-sm font-medium ${peligroInfo.color}`}>
+                {peligroInfo.label}
+              </span>
+            </div>
+          )}
         </CardContent>
       </Card>
 

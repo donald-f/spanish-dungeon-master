@@ -229,9 +229,8 @@ export function GameChat({
         </div>
       </div>
       
-      <div className="px-4 py-2 border-b space-y-2">
+      <div className="px-4 py-2 border-b">
         <HealthBar salud={gameState.salud ?? 100} estadoAfectos={gameState.estadoAfectos ?? []} />
-        <DangerIndicator peligro={gameState.currentPeligro} />
       </div>
 
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
@@ -244,12 +243,6 @@ export function GameChat({
                 <p className="text-sm text-muted-foreground">Tu acción:</p>
                 <p className="font-medium">{turn.userInput}</p>
               </div>
-              
-              {turn.consecuencia && (
-                <div className="text-sm italic text-muted-foreground bg-muted/30 rounded p-2">
-                  {turn.consecuencia}
-                </div>
-              )}
               
               <div className="story-text leading-relaxed whitespace-pre-wrap text-muted-foreground">
                 {turn.narracion}
@@ -264,12 +257,6 @@ export function GameChat({
             <div className="bg-muted/50 rounded-lg p-3">
               <p className="text-sm text-muted-foreground">Tu acción:</p>
               <p className="font-medium">{gameState.history[gameState.history.length - 1].userInput}</p>
-            </div>
-          )}
-          
-          {gameState.currentConsecuencia && (
-            <div className="text-sm italic bg-muted/30 rounded p-2" data-testid="current-consequence">
-              {gameState.currentConsecuencia}
             </div>
           )}
           

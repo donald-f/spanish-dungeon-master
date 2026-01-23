@@ -521,6 +521,7 @@ export default function Game() {
                 turnNumber={gameState.turnIndex}
                 targetTurns={gameState.targetTurns}
                 tension={gameState.tension}
+                peligro={gameState.currentPeligro}
               />
             </div>
           </div>
