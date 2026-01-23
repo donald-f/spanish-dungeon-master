@@ -30,7 +30,8 @@ A Spanish-only text-based adventure game where an AI acts as a dungeon master (D
 - **Frontend**: React with TypeScript, Vite, TailwindCSS, Shadcn/UI components
 - **Backend**: Node.js + Express
 - **AI**: OpenAI API via Replit AI Integrations (gpt-4o model)
-- **Storage**: In-memory session storage
+- **Database**: PostgreSQL (Neon-backed via Replit) with Drizzle ORM
+- **Session Persistence**: Game sessions stored in PostgreSQL, session ID cached in localStorage
 
 ## Project Structure
 ```
@@ -46,12 +47,13 @@ client/
 │   │       └── HistoryPanel.tsx   # Turn history with pagination
 │   └── App.tsx
 server/
-├── routes.ts                 # API endpoints (/api/start, /api/turn, /api/select-plot, /api/usage)
-├── storage.ts                # In-memory session storage
+├── routes.ts                 # API endpoints (/api/start, /api/turn, /api/select-plot, /api/usage, /api/session/:id)
+├── storage.ts                # PostgreSQL session storage with DatabaseStorage class
 ├── usageTracker.ts           # Monthly turn limit tracking (1600 turns = ~$40)
+├── db.ts                     # Database connection setup
 └── index.ts
 shared/
-└── schema.ts                 # TypeScript types and Zod schemas
+└── schema.ts                 # TypeScript types, Zod schemas, and Drizzle table definitions
 ```
 
 ## API Endpoints
@@ -74,6 +76,12 @@ Processes a player action or question and returns AI response.
 ### GET /api/usage
 Returns current usage statistics for cost limiting.
 - Response: `{ used: number, remaining: number, limit: number, monthYear: string }`
+
+### GET /api/session/:sessionId
+Validates and retrieves an existing game session for resuming play.
+- Response on success: `{ session: { id, gameState, spanishLevel, duration, ended } }`
+- Response on not found: 404 `{ error: "Session not found" }`
+- Response if ended: 410 `{ error: "Session has ended" }`
 
 ## Game Flow
 1. **Setup**: Player selects Spanish level (A2/B1/B2) and duration (corta/media/larga)
