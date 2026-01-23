@@ -232,6 +232,22 @@ function parseAIResponse(content: string): AIResponse {
     parsed.cambio_estado = {};
   }
   
+  if (parsed.resumen_aprendizajes) {
+    if (typeof parsed.resumen_aprendizajes === "string") {
+      parsed.resumen_aprendizajes = {
+        puntos: [parsed.resumen_aprendizajes],
+        errores_frecuentes: [],
+        frases_utiles: [],
+      };
+    } else if (typeof parsed.resumen_aprendizajes === "object") {
+      parsed.resumen_aprendizajes = {
+        puntos: Array.isArray(parsed.resumen_aprendizajes.puntos) ? parsed.resumen_aprendizajes.puntos : [],
+        errores_frecuentes: Array.isArray(parsed.resumen_aprendizajes.errores_frecuentes) ? parsed.resumen_aprendizajes.errores_frecuentes : [],
+        frases_utiles: Array.isArray(parsed.resumen_aprendizajes.frases_utiles) ? parsed.resumen_aprendizajes.frases_utiles : [],
+      };
+    }
+  }
+  
   return aiResponseSchema.parse(parsed);
 }
 

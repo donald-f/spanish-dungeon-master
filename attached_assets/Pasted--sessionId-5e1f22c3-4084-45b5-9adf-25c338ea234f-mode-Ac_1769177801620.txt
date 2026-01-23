@@ -1,0 +1,184 @@
+{
+    "sessionId": "5e1f22c3-4084-45b5-9adf-25c338ea234f",
+    "mode": "Acción",
+    "userInput": "Gritar y rendirte, esperando un desenlace rápido.",
+    "selectedOptionId": "B",
+    "state": {
+        "spanishLevel": "A2",
+        "duration": "corta",
+        "targetTurns": 12,
+        "turnIndex": 6,
+        "progreso": 0.42,
+        "tension": 0.8,
+        "plot": {
+            "id": "2",
+            "titulo": "El tren del futuro",
+            "descripcion": "Despiertas en un tren futurista que viaja sin parar hacia un destino desconocido. Descubres que los vagones están llenos de robots hostiles y trampas mortales. Necesitas elegir bien tus movimientos o podrías quedar atrapado para siempre."
+        },
+        "inventory": {
+            "items": [],
+            "pistas": []
+        },
+        "resumenMemoria": "El jugador está gravemente herido después de correr e intentar usar su barra metálica contra los robots. Aunque logró golpear a uno, el ataque fue ineficaz, y ahora enfrenta una persecución aún más mortal.",
+        "salud": 20,
+        "estadoAfectos": [
+            "alerta",
+            "herido",
+            "vulnerable",
+            "sangrando",
+            "agotado"
+        ],
+        "banderas": [
+            "se_escondio_exitosamente",
+            "encontro_barra",
+            "alerto_a_los_robots"
+        ]
+    },
+    "recentHistory": [
+        {
+            "turnNumber": 1,
+            "userInput": "Elegir: El tren del futuro",
+            "inputMode": "Acción",
+            "narracion": "Despiertas en un tren futurista. Las paredes brillan con luces azules y los sonidos metálicos llenan el aire. Estás en un vagón vacío con asientos extraños y una pantalla que muestra imágenes de un paisaje desconocido. No recuerdas cómo llegaste aquí. De repente, escuchas sonidos mecánicos mientras varios robots pasan por el pasillo, patrullando con armas incorporadas. Tu corazón late fuerte al darte cuenta de que este lugar no es seguro.",
+            "opciones": [
+                {
+                    "id": "A",
+                    "texto": "Examinar el vagón para buscar algo útil."
+                },
+                {
+                    "id": "B",
+                    "texto": "Acercarte a la puerta del vagón para intentar abrirla."
+                },
+                {
+                    "id": "C",
+                    "texto": "Esconderte detrás de los asientos y esperar a que los robots se vayan."
+                }
+            ],
+            "pistaProfesor": "",
+            "timestamp": 1769176635239,
+            "consecuencia": "Introducción al tren futurista y la amenaza de los robots hostiles.",
+            "peligro": {
+                "nivel": "medio",
+                "razon": "Los robots están armados y podrían atacarte si te descubren."
+            }
+        },
+        {
+            "turnNumber": 2,
+            "userInput": "C. Esconderte detrás de los asientos y esperar a que los robots se vayan.",
+            "inputMode": "Acción",
+            "narracion": "Te deslizas hacia el suelo y te escondes detrás de los asientos, respirando lo más silenciosamente posible. A través de las pequeñas ranuras entre los asientos, observas a los robots patrullando. Sus ojos rojos escanean el área, y por un momento, uno de ellos parece enfocarse en tu posición. Tu corazón se acelera. Sin embargo, los robots continúan avanzando. Por ahora, estás fuera de peligro inmediato, pero tu cuerpo está tenso y nervioso después de la experiencia.",
+            "opciones": [
+                {
+                    "id": "A",
+                    "texto": "Inspeccionar el vagón en busca de armas o herramientas."
+                },
+                {
+                    "id": "B",
+                    "texto": "Salir de tu escondite y dirigirte al pasillo principal."
+                },
+                {
+                    "id": "C",
+                    "texto": "Permanecer escondido y esperar más tiempo."
+                }
+            ],
+            "timestamp": 1769176752989,
+            "consecuencia": "Los robots no detectan tu presencia, pero estás nervioso y alerta.",
+            "peligro": {
+                "nivel": "medio",
+                "razon": "Los robots están patrullando cerca y pueden descubrirte si haces algún movimiento ruidoso."
+            }
+        },
+        {
+            "turnNumber": 3,
+            "userInput": "A. Inspeccionar el vagón en busca de armas o herramientas.",
+            "inputMode": "Acción",
+            "narracion": "Te decides a inspeccionar el vagón en busca de armas o herramientas. Con cuidado, te levantas lentamente desde tu escondite detrás de los asientos y caminas silenciosamente entre ellos, tratando de evitar movimientos bruscos. El vagón es frío y metálico, y los robots se encuentran patrullando a varios metros de distancia. Te concentras en mantener los sonidos al mínimo mientras registras las partes visibles de los asientos y las esquinas. Logras encontrar una barra metálica que parece parte de la estructura de los asientos; podría ser útil como herramienta o incluso como arma improvisada. Sin embargo, al mover la barra, haces un ligero ruido metálico. Un robot cercano parece reaccionar, deteniéndose y girando su cabeza hacia tu dirección. Todavía estás oculto detrás de los asientos, pero ahora te sientes mucho más nervioso.",
+            "opciones": [
+                {
+                    "id": "A",
+                    "texto": "Usar la barra metálica para buscar objetos adicionales con más cuidado."
+                },
+                {
+                    "id": "B",
+                    "texto": "Quedarte quieto y esperar a que el robot pierda interés."
+                },
+                {
+                    "id": "C",
+                    "texto": "Prepararte para defenderte si el robot se acerca."
+                }
+            ],
+            "timestamp": 1769176804007,
+            "consecuencia": "El jugador obtuvo una barra metálica, pero alertó a un robot cercano, aumentando el peligro.",
+            "peligro": {
+                "nivel": "medio",
+                "razon": "El ruido metálico llamó la atención de un robot hostil que ahora está alerta."
+            }
+        },
+        {
+            "turnNumber": 4,
+            "userInput": "B. Quedarte quieto y esperar a que el robot pierda interés.",
+            "inputMode": "Acción",
+            "narracion": "Te quedas completamente quieto, conteniendo la respiración mientras el robot gira su cabeza en tu dirección. Su ojo rojo se detiene por unos segundos en tu posición y parece analizar el área en busca de anomalías. El tiempo se siente eterno mientras intentas no hacer el más mínimo movimiento. Después de lo que parecen ser siglos, el robot realiza un giro brusco y continúa su patrullaje, alejándose lentamente. Sin embargo, su reacción priorizó el área donde te encuentras, aumentando las probabilidades de ser descubierto si haces otro ruido mientras permaneces allí.",
+            "opciones": [
+                {
+                    "id": "A",
+                    "texto": "Intentar moverte silenciosamente hacia el siguiente vagón."
+                },
+                {
+                    "id": "B",
+                    "texto": "Examinar el área en busca de alguna forma de ocultarte mejor."
+                }
+            ],
+            "timestamp": 1769176952563,
+            "consecuencia": "El jugador evitó ser descubierto, pero la tensión aumentó y el lugar está más peligroso.",
+            "peligro": {
+                "nivel": "medio",
+                "razon": "El robot está alerta debido al ruido previo y las patrullas siguen cerca."
+            }
+        },
+        {
+            "turnNumber": 5,
+            "userInput": "abro la puerta del vagon y salto del tren, sin importarme la rapidez en que el tren esta moviendo",
+            "inputMode": "Acción",
+            "narracion": "Decides actuar impulsivamente y abrir la puerta del vagón para saltar del tren en movimiento, sin considerar la velocidad del tren ni el peligro. La puerta se abre con un ruido fuerte que atrae la atención de los robots patrullando. Al saltar, el impacto contra el suelo es brutal: el tren iba a gran velocidad y el suelo es duro y rocoso. Tu cuerpo sufre heridas graves en las piernas y en el brazo izquierdo. Mientras intentas recobrar la conciencia y evaluar tus daños, ves luces rojas de robots acercándose desde el tren, alertados por tu ruido. Estás herido y vulnerable en un terreno desolado.",
+            "opciones": [
+                {
+                    "id": "A",
+                    "texto": "Buscar refugio entre las rocas cercanas y esconderte de los robots."
+                },
+                {
+                    "id": "B",
+                    "texto": "Usar la barra metálica para intentar defenderte si los robots te alcanzan."
+                }
+            ],
+            "timestamp": 1769177081340,
+            "consecuencia": "El jugador está gravemente herido con los robots acercándose a su posición.",
+            "peligro": {
+                "nivel": "alto",
+                "razon": "El jugador está herido, vulnerado y cerca de ser capturado por los robots hostiles alertados."
+            }
+        },
+        {
+            "turnNumber": 6,
+            "userInput": "yo corro y lanzo mi barra metalica si se me acercen",
+            "inputMode": "Acción",
+            "narracion": "Con tus pocas fuerzas y decidido a sobrevivir, te obligas a correr pese al dolor en tus piernas y brazo herido. Cada paso es tortuoso debido a tus heridas, y tu velocidad es extremadamente limitada. Al ver que dos robots avanzan rápidamente hacia ti, decides usar tu barra metálica como un proyectil. La barra vuela hacia uno de los robots, golpeándolo en el torso con un impacto metálico, pero el robot apenas se tambalea, manteniéndose funcional y dirigiéndose aún más rápido en tu dirección. El segundo robot, ahora muy cerca de ti, se prepara para usar un arma integrada en su brazo. Antes de que te alcance, una ráfaga de energía pasa rozando tu costado derecho, quemándote y dejándote gravemente herido. Tu cuerpo cae al suelo por el dolor y la gravedad de tus lesiones.",
+            "opciones": [
+                {
+                    "id": "A",
+                    "texto": "Intentar arrastrarte hacia una roca cercana para esconderte."
+                },
+                {
+                    "id": "B",
+                    "texto": "Gritar y rendirte, esperando un desenlace rápido."
+                }
+            ],
+            "timestamp": 1769177391646,
+            "consecuencia": "El jugador sufrió heridas graves al intentar huir y atacar a los robots.",
+            "peligro": {
+                "nivel": "alto",
+                "razon": "Los robots hostiles están armados y muy cerca, mientras el jugador está gravemente herido y casi incapacitado."
+            }
+        }
+    ]
+}
