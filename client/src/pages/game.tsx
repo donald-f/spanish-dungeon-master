@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Scroll, RotateCcw, Sun, Moon, AlertTriangle } from "lucide-react";
-import type { GameState, SpanishLevel, Duration, PlotHook, InputMode, TurnEntry } from "@shared/schema";
+import type { GameState, SpanishLevel, Duration, PlotHook, InputMode, TurnEntry, ResumenAprendizajes, LearningEntry } from "@shared/schema";
 import { GameSetup } from "@/components/game/GameSetup";
 import { GameChat } from "@/components/game/GameChat";
 import { InventoryPanel } from "@/components/game/InventoryPanel";
@@ -25,6 +25,11 @@ export default function Game() {
   const [darkMode, setDarkMode] = useState(false);
   const [grammarFeedback, setGrammarFeedback] = useState<string | null>(null);
   const [limitError, setLimitError] = useState<string | null>(null);
+  const [isGameOver, setIsGameOver] = useState(false);
+  const [gameOverRazon, setGameOverRazon] = useState<string | undefined>();
+  const [isFinal, setIsFinal] = useState(false);
+  const [finalRazon, setFinalRazon] = useState<string | undefined>();
+  const [resumenAprendizajes, setResumenAprendizajes] = useState<ResumenAprendizajes | undefined>();
   const { toast } = useToast();
 
   const toggleDarkMode = useCallback(() => {
@@ -87,6 +92,11 @@ export default function Game() {
       const data = await response.json();
       setGameState(data.gameState);
       setPhase("playing");
+      setIsGameOver(false);
+      setIsFinal(false);
+      setGameOverRazon(undefined);
+      setFinalRazon(undefined);
+      setResumenAprendizajes(undefined);
     } catch (error) {
       toast({
         title: "Error",
@@ -125,6 +135,9 @@ export default function Game() {
             plot: gameState.plot,
             inventory: gameState.inventory,
             resumenMemoria: gameState.resumenMemoria,
+            salud: gameState.salud ?? 100,
+            estadoAfectos: gameState.estadoAfectos ?? [],
+            banderas: gameState.banderas ?? [],
           },
           recentHistory: gameState.history.slice(-8),
         }),
@@ -140,16 +153,22 @@ export default function Game() {
         throw new Error("Error al procesar la acción");
       }
       
-      // Handle "Pregunta" mode - just show the answer, don't advance the turn
       if (data.isPreguntaResponse) {
         setPreguntaRespuesta(data.aiResponse.narracion);
-        setGrammarFeedback(null); // Clear any grammar feedback when in pregunta mode
-        // Keep Pregunta mode - user must manually switch back to Acción
+        setGrammarFeedback(null);
+        
+        const newLearningEntry: LearningEntry = {
+          tipo: "pregunta",
+          contenido: userInput || "",
+          turno: gameState.turnIndex,
+        };
+        setGameState({
+          ...gameState,
+          learningLog: [...(gameState.learningLog || []), newLearningEntry],
+        });
         return;
       }
       
-      // Normal action - advance the story
-      // Format the display text: if option was selected, prefix with option ID
       let displayInput = userInput || "";
       if (selectedOptionId && userInput) {
         displayInput = `${selectedOptionId}. ${userInput}`;
@@ -163,6 +182,8 @@ export default function Game() {
         opciones: data.aiResponse.opciones,
         pistaProfesor: data.aiResponse.pista_profesor,
         timestamp: Date.now(),
+        consecuencia: data.aiResponse.consecuencia,
+        peligro: data.aiResponse.peligro,
       };
       
       const newInventory = { ...gameState.inventory };
@@ -178,6 +199,50 @@ export default function Game() {
         newInventory.pistas = [...newInventory.pistas, ...data.aiResponse.inventario.pistas];
       }
       
+      let newSalud = gameState.salud ?? 100;
+      if (data.aiResponse.cambio_estado?.salud_delta) {
+        newSalud = Math.max(0, Math.min(100, newSalud + data.aiResponse.cambio_estado.salud_delta));
+      }
+      
+      let newEstadoAfectos = [...(gameState.estadoAfectos || [])];
+      if (data.aiResponse.cambio_estado?.estado_afectos_agregar) {
+        newEstadoAfectos = [...newEstadoAfectos, ...data.aiResponse.cambio_estado.estado_afectos_agregar];
+      }
+      if (data.aiResponse.cambio_estado?.estado_afectos_quitar) {
+        newEstadoAfectos = newEstadoAfectos.filter(
+          e => !data.aiResponse.cambio_estado.estado_afectos_quitar.includes(e)
+        );
+      }
+      
+      let newBanderas = [...(gameState.banderas || [])];
+      if (data.aiResponse.cambio_estado?.banderas_agregar) {
+        newBanderas = [...newBanderas, ...data.aiResponse.cambio_estado.banderas_agregar];
+      }
+      if (data.aiResponse.cambio_estado?.banderas_quitar) {
+        newBanderas = newBanderas.filter(
+          b => !data.aiResponse.cambio_estado.banderas_quitar.includes(b)
+        );
+      }
+      
+      let newLearningLog = [...(gameState.learningLog || [])];
+      if (data.aiResponse.pista_profesor) {
+        newLearningLog.push({
+          tipo: "pista",
+          contenido: data.aiResponse.pista_profesor,
+          turno: gameState.turnIndex + 1,
+        });
+      }
+      if (data.grammarFeedback) {
+        newLearningLog.push({
+          tipo: "correccion",
+          contenido: data.grammarFeedback,
+          turno: gameState.turnIndex + 1,
+        });
+      }
+      
+      const isGameOverNow = data.aiResponse.game_over || newSalud <= 0;
+      const isFinalNow = data.aiResponse.final;
+      
       setGameState({
         ...gameState,
         turnIndex: gameState.turnIndex + 1,
@@ -186,25 +251,45 @@ export default function Game() {
         inventory: newInventory,
         resumenMemoria: data.aiResponse.resumen_memoria,
         history: [...gameState.history, newTurnEntry],
-        currentOptions: data.aiResponse.opciones,
+        currentOptions: data.aiResponse.opciones || [],
         permitirTextoLibre: data.aiResponse.permitir_texto_libre,
         permitirPreguntas: data.aiResponse.permitir_preguntas,
         currentNarracion: data.aiResponse.narracion,
         currentPista: data.aiResponse.pista_profesor,
-        gameEnded: data.gameEnded,
+        gameEnded: data.gameEnded || isGameOverNow || isFinalNow,
+        salud: newSalud,
+        estadoAfectos: newEstadoAfectos,
+        banderas: newBanderas,
+        learningLog: newLearningLog,
+        currentPeligro: data.aiResponse.peligro,
+        currentConsecuencia: data.aiResponse.consecuencia,
+        gameOverRazon: data.aiResponse.game_over_razon,
+        finalRazon: data.aiResponse.final_razon,
+        resumenAprendizajes: data.aiResponse.resumen_aprendizajes,
       });
       
       setPreguntaRespuesta(null);
       
-      // Show grammar feedback if provided
       if (data.grammarFeedback) {
         setGrammarFeedback(data.grammarFeedback);
       } else {
         setGrammarFeedback(null);
       }
       
-      if (data.gameEnded) {
+      if (isGameOverNow) {
+        setIsGameOver(true);
+        setGameOverRazon(data.aiResponse.game_over_razon || (newSalud <= 0 ? "Tu salud llegó a cero." : undefined));
         setPhase("ended");
+      } else if (isFinalNow) {
+        setIsFinal(true);
+        setFinalRazon(data.aiResponse.final_razon);
+        setPhase("ended");
+      } else if (data.gameEnded) {
+        setPhase("ended");
+      }
+      
+      if (data.aiResponse.resumen_aprendizajes) {
+        setResumenAprendizajes(data.aiResponse.resumen_aprendizajes);
       }
     } catch (error) {
       toast({
@@ -225,6 +310,11 @@ export default function Game() {
     setInputMode("Acción");
     setShowHistory(false);
     setLimitError(null);
+    setIsGameOver(false);
+    setIsFinal(false);
+    setGameOverRazon(undefined);
+    setFinalRazon(undefined);
+    setResumenAprendizajes(undefined);
   }, []);
 
   return (
@@ -352,6 +442,11 @@ export default function Game() {
                   onShowHistory={() => setShowHistory(true)}
                   isLoading={isLoading}
                   gameEnded={phase === "ended"}
+                  isGameOver={isGameOver}
+                  gameOverRazon={gameOverRazon}
+                  isFinal={isFinal}
+                  finalRazon={finalRazon}
+                  resumenAprendizajes={resumenAprendizajes}
                   preguntaRespuesta={preguntaRespuesta}
                   onDismissPregunta={() => setPreguntaRespuesta(null)}
                   grammarFeedback={grammarFeedback}
