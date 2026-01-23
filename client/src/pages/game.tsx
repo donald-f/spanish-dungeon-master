@@ -1,8 +1,8 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Scroll, RotateCcw, Sun, Moon, AlertTriangle } from "lucide-react";
+import { Scroll, RotateCcw, Sun, Moon, AlertTriangle, Loader2 } from "lucide-react";
 import type { GameState, SpanishLevel, Duration, PlotHook, InputMode, TurnEntry, ResumenAprendizajes, LearningEntry } from "@shared/schema";
 import { GameSetup } from "@/components/game/GameSetup";
 import { GameChat } from "@/components/game/GameChat";
@@ -10,10 +10,12 @@ import { InventoryPanel } from "@/components/game/InventoryPanel";
 import { HistoryPanel } from "@/components/game/HistoryPanel";
 import { useToast } from "@/hooks/use-toast";
 
-type GamePhase = "setup" | "selectPlot" | "playing" | "ended";
+const SESSION_STORAGE_KEY = "aventura_session_id";
+
+type GamePhase = "setup" | "selectPlot" | "playing" | "ended" | "loading";
 
 export default function Game() {
-  const [phase, setPhase] = useState<GamePhase>("setup");
+  const [phase, setPhase] = useState<GamePhase>("loading");
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [plots, setPlots] = useState<PlotHook[]>([]);
   const [sessionId, setSessionId] = useState<string>("");
@@ -31,6 +33,52 @@ export default function Game() {
   const [finalRazon, setFinalRazon] = useState<string | undefined>();
   const [resumenAprendizajes, setResumenAprendizajes] = useState<ResumenAprendizajes | undefined>();
   const { toast } = useToast();
+
+  const clearSession = useCallback(() => {
+    localStorage.removeItem(SESSION_STORAGE_KEY);
+  }, []);
+
+  const saveSession = useCallback((id: string) => {
+    localStorage.setItem(SESSION_STORAGE_KEY, id);
+  }, []);
+
+  useEffect(() => {
+    const checkExistingSession = async () => {
+      const savedSessionId = localStorage.getItem(SESSION_STORAGE_KEY);
+      
+      if (!savedSessionId) {
+        setPhase("setup");
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/session/${savedSessionId}`);
+        
+        if (!response.ok) {
+          clearSession();
+          setPhase("setup");
+          return;
+        }
+        
+        const data = await response.json();
+        setSessionId(savedSessionId);
+        setGameState(data.gameState);
+        setSelectedLevel(data.gameState.spanishLevel);
+        setSelectedDuration(data.gameState.duration);
+        setPhase("playing");
+        
+        toast({
+          title: "Sesión restaurada",
+          description: "Continuando tu aventura desde donde la dejaste.",
+        });
+      } catch {
+        clearSession();
+        setPhase("setup");
+      }
+    };
+    
+    checkExistingSession();
+  }, [clearSession, toast]);
 
   const toggleDarkMode = useCallback(() => {
     setDarkMode(!darkMode);
@@ -97,6 +145,7 @@ export default function Game() {
       setGameOverRazon(undefined);
       setFinalRazon(undefined);
       setResumenAprendizajes(undefined);
+      saveSession(sessionId);
     } catch (error) {
       toast({
         title: "Error",
@@ -106,7 +155,7 @@ export default function Game() {
     } finally {
       setIsLoading(false);
     }
-  }, [sessionId, selectedLevel, selectedDuration, toast]);
+  }, [sessionId, selectedLevel, selectedDuration, toast, saveSession]);
 
   const [preguntaRespuesta, setPreguntaRespuesta] = useState<string | null>(null);
 
@@ -280,12 +329,15 @@ export default function Game() {
         setIsGameOver(true);
         setGameOverRazon(data.aiResponse.game_over_razon || (newSalud <= 0 ? "Tu salud llegó a cero." : undefined));
         setPhase("ended");
+        clearSession();
       } else if (isFinalNow) {
         setIsFinal(true);
         setFinalRazon(data.aiResponse.final_razon);
         setPhase("ended");
+        clearSession();
       } else if (data.gameEnded) {
         setPhase("ended");
+        clearSession();
       }
       
       if (data.aiResponse.resumen_aprendizajes) {
@@ -300,9 +352,10 @@ export default function Game() {
     } finally {
       setIsLoading(false);
     }
-  }, [gameState, sessionId, inputMode, toast]);
+  }, [gameState, sessionId, inputMode, toast, clearSession]);
 
   const handleNewGame = useCallback(() => {
+    clearSession();
     setPhase("setup");
     setGameState(null);
     setPlots([]);
@@ -315,7 +368,7 @@ export default function Game() {
     setGameOverRazon(undefined);
     setFinalRazon(undefined);
     setResumenAprendizajes(undefined);
-  }, []);
+  }, [clearSession]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -381,6 +434,13 @@ export default function Game() {
               </div>
             </CardContent>
           </Card>
+        )}
+        
+        {phase === "loading" && (
+          <div className="flex flex-col items-center justify-center min-h-[50vh]">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+            <p className="text-muted-foreground">Cargando...</p>
+          </div>
         )}
         
         {phase === "setup" && (

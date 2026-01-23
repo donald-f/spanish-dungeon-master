@@ -282,6 +282,29 @@ export async function registerRoutes(
     res.json(await getUsageStats());
   });
 
+  app.get("/api/session/:sessionId", async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      const session = await storage.getSession(sessionId);
+      
+      if (!session || !session.gameState) {
+        return res.status(404).json({ error: "session_not_found" });
+      }
+      
+      if (session.gameState.gameEnded) {
+        return res.status(410).json({ error: "session_ended" });
+      }
+      
+      res.json({ 
+        gameState: session.gameState,
+        plots: session.plots,
+      });
+    } catch (error) {
+      console.error("Error in /api/session:", error);
+      res.status(500).json({ error: "Error al recuperar la sesión" });
+    }
+  });
+
   app.post("/api/start", async (req, res) => {
     try {
       const { spanishLevel, duration } = req.body as StartRequest;
