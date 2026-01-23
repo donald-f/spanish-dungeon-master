@@ -85,7 +85,6 @@ FORMATO JSON REQUERIDO
   ],
   "permitir_texto_libre": true,
   "permitir_preguntas": true,
-  "pista_profesor": "Consejo de español opcional",
   "inventario": {
     "agregar": ["objetos ganados"],
     "quitar": ["objetos perdidos/usados"]
@@ -140,6 +139,7 @@ Cuando game_over=true:
 - opciones debe estar vacío []
 - permitir_texto_libre = false
 - Narra la muerte/fracaso de forma dramática pero justa
+- SIEMPRE incluye resumen_aprendizajes con lecciones de español aprendidas
 
 ═══════════════════════════════════════
 CUÁNDO USAR FINAL (VICTORIA)
@@ -147,12 +147,24 @@ CUÁNDO USAR FINAL (VICTORIA)
 
 - El jugador completó exitosamente la aventura
 - progreso = 1.0
-- Incluye resumen_aprendizajes al final
+- SIEMPRE incluye resumen_aprendizajes al final
 
 Cuando final=true:
 - opciones debe estar vacío []
 - Narra el final victorioso
-- Incluye resumen_aprendizajes con lecciones reales de la partida`;
+- SIEMPRE incluye resumen_aprendizajes con lecciones reales de la partida
+
+═══════════════════════════════════════
+ARMAS Y COMBATE
+═══════════════════════════════════════
+
+Si la aventura tiene villanos o enemigos:
+- DEBE haber armas u objetos útiles para el combate disponibles en el camino
+- Ejemplos: espadas, cuchillos, pistolas, palos, antorchas, piedras, herramientas
+- El protagonista necesita poder defenderse de manera realista
+- Coloca armas en lugares lógicos: armarios, cajas, mesas, guardias caídos
+- Algunos objetos del inventario pueden usarse como armas improvisadas
+- Da pistas sobre la ubicación de armas cuando el peligro se acerca`;
 
 const PLOT_GENERATION_PROMPT = `Genera exactamente 3 ganchos de trama diferentes para una aventura de texto en español con PELIGRO REAL.
 

@@ -255,12 +255,6 @@ export function GameChat({
                 {turn.narracion}
               </div>
               
-              {turn.pistaProfesor && (
-                <div className="flex items-start gap-2 p-3 rounded-lg bg-accent/10 border border-accent/20">
-                  <Lightbulb className="h-4 w-4 text-accent/70 mt-0.5 shrink-0" />
-                  <p className="text-sm text-muted-foreground">{turn.pistaProfesor}</p>
-                </div>
-              )}
             </div>
           ))}
           
@@ -283,12 +277,6 @@ export function GameChat({
             {gameState.currentNarracion}
           </div>
           
-          {gameState.currentPista && (
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-accent/20 border border-accent/30">
-              <Lightbulb className="h-4 w-4 text-accent mt-0.5 shrink-0" />
-              <p className="text-sm">{gameState.currentPista}</p>
-            </div>
-          )}
           
           {preguntaRespuesta && (
             <div className="flex items-start gap-2 p-4 rounded-lg bg-primary/10 border border-primary/30" data-testid="pregunta-respuesta">
@@ -404,7 +392,7 @@ export function GameChat({
             </div>
           )}
 
-          {gameState.permitirTextoLibre && (
+          {(inputMode === "Pregunta" || gameState.permitirTextoLibre) && (
             <div className="flex gap-2">
               <Textarea
                 value={textInput}
@@ -434,7 +422,7 @@ export function GameChat({
             </div>
           )}
           
-          {!gameState.permitirTextoLibre && gameState.currentOptions.length > 0 && (
+          {!gameState.permitirTextoLibre && inputMode === "Acción" && gameState.currentOptions.length > 0 && (
             <p className="text-sm text-muted-foreground text-center">
               Debes elegir una de las opciones anteriores.
             </p>
