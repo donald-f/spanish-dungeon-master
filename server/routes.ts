@@ -273,6 +273,57 @@ function generateLearningSummary(learningLog: LearningEntry[]): ResumenAprendiza
   };
 }
 
+function mergeLearningSummaries(
+  existing: ResumenAprendizajes | undefined,
+  newFromAI: ResumenAprendizajes | undefined,
+  grammarCorrection?: string,
+  preguntaLearning?: string
+): ResumenAprendizajes {
+  const merged: ResumenAprendizajes = {
+    puntos: [...(existing?.puntos || [])],
+    errores_frecuentes: [...(existing?.errores_frecuentes || [])],
+    frases_utiles: [...(existing?.frases_utiles || [])],
+  };
+  
+  if (newFromAI) {
+    if (newFromAI.puntos) {
+      for (const punto of newFromAI.puntos) {
+        if (!merged.puntos.includes(punto)) {
+          merged.puntos.push(punto);
+        }
+      }
+    }
+    if (newFromAI.errores_frecuentes) {
+      for (const error of newFromAI.errores_frecuentes) {
+        if (!merged.errores_frecuentes.includes(error)) {
+          merged.errores_frecuentes.push(error);
+        }
+      }
+    }
+    if (newFromAI.frases_utiles) {
+      for (const frase of newFromAI.frases_utiles) {
+        if (!merged.frases_utiles.includes(frase)) {
+          merged.frases_utiles.push(frase);
+        }
+      }
+    }
+  }
+  
+  if (grammarCorrection && !merged.errores_frecuentes.includes(grammarCorrection)) {
+    merged.errores_frecuentes.push(grammarCorrection);
+  }
+  
+  if (preguntaLearning && !merged.puntos.includes(preguntaLearning)) {
+    merged.puntos.push(preguntaLearning);
+  }
+  
+  merged.puntos = merged.puntos.slice(-20);
+  merged.errores_frecuentes = merged.errores_frecuentes.slice(-15);
+  merged.frases_utiles = merged.frases_utiles.slice(-15);
+  
+  return merged;
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -547,6 +598,22 @@ Responde SOLO con el texto de tu respuesta, sin formato JSON.`;
         
         const respuesta = preguntaCompletion.choices[0]?.message?.content || "No pude entender tu pregunta. ¿Podrías reformularla?";
         
+        const preguntaLearning = `Pregunta: "${playerAction}" → ${respuesta}`;
+        const dbState = session.gameState!;
+        const updatedResumenAprendizajes = mergeLearningSummaries(
+          dbState.resumenAprendizajes,
+          undefined,
+          undefined,
+          preguntaLearning
+        );
+        
+        await storage.updateSession(sessionId, { 
+          gameState: {
+            ...dbState,
+            resumenAprendizajes: updatedResumenAprendizajes,
+          }
+        });
+        
         const response: TurnResponse = {
           aiResponse: {
             narracion: respuesta,
@@ -633,6 +700,7 @@ ${turnMessage}`
       const gameEnded = aiResponse.game_over || aiResponse.final || aiResponse.estado.progreso >= 1.0 || state.turnIndex >= state.targetTurns;
       
       let grammarFeedback: string | undefined;
+      let grammarCorrection: string | undefined;
       if (userInput && userInput.trim().length > 0 && !selectedOptionId) {
         try {
           const grammarPrompt = `Eres un profesor de español amable. Analiza el siguiente texto escrito por un estudiante de nivel ${state.spanishLevel}.
@@ -656,6 +724,12 @@ Responde SOLO con el texto de tu retroalimentación.`;
           });
           
           grammarFeedback = grammarCompletion.choices[0]?.message?.content || undefined;
+          
+          if (grammarFeedback && !grammarFeedback.toLowerCase().includes("correcto") && 
+              !grammarFeedback.toLowerCase().includes("bien escrito") &&
+              !grammarFeedback.toLowerCase().includes("muy bien")) {
+            grammarCorrection = `Corrección: "${userInput}" → ${grammarFeedback}`;
+          }
         } catch (grammarError) {
           console.error("Error getting grammar feedback:", grammarError);
         }
@@ -735,7 +809,11 @@ Responde SOLO con el texto de tu retroalimentación.`;
         progreso: aiResponse.estado?.progreso ?? dbState.progreso ?? 0,
         tension: aiResponse.estado?.tension ?? dbState.tension ?? 0,
         history: newHistory,
-        resumenAprendizajes: aiResponse.resumen_aprendizajes || dbState.resumenAprendizajes,
+        resumenAprendizajes: mergeLearningSummaries(
+          dbState.resumenAprendizajes,
+          aiResponse.resumen_aprendizajes,
+          grammarCorrection
+        ),
       };
       
       await storage.updateSession(sessionId, { 
