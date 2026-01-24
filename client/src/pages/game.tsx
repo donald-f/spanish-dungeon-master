@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Scroll, RotateCcw, Sun, Moon, AlertTriangle, Loader2, Backpack, History } from "lucide-react";
+import { Scroll, RotateCcw, Sun, Moon, AlertTriangle, Loader2, Backpack, History, Volume2, VolumeX } from "lucide-react";
 import type { GameState, SpanishLevel, Duration, PlotHook, InputMode, TurnEntry, ResumenAprendizajes, LearningEntry } from "@shared/schema";
 import { GameSetup } from "@/components/game/GameSetup";
 import { GameChat } from "@/components/game/GameChat";
@@ -11,9 +11,11 @@ import { InventoryPanel } from "@/components/game/InventoryPanel";
 import { HistoryPanel } from "@/components/game/HistoryPanel";
 import { PlotSelection } from "@/components/game/PlotSelection";
 import { useToast } from "@/hooks/use-toast";
+import { useTTS } from "@/hooks/use-tts";
 
 const SESSION_STORAGE_KEY = "aventura_session_id";
 const DARK_MODE_KEY = "aventura_dark_mode";
+const TTS_MUTE_KEY = "aventura_tts_mute";
 
 type GamePhase = "setup" | "selectPlot" | "playing" | "ended" | "loading";
 
@@ -36,7 +38,12 @@ export default function Game() {
     }
     return isDark;
   });
+  const [isMuted, setIsMuted] = useState(() => {
+    const saved = localStorage.getItem(TTS_MUTE_KEY);
+    return saved === "true";
+  });
   const [grammarFeedback, setGrammarFeedback] = useState<string | null>(null);
+  const { speak, stop: stopTTS } = useTTS({ lang: "es-ES", rate: 0.9 });
   const [limitError, setLimitError] = useState<string | null>(null);
   const [isGameOver, setIsGameOver] = useState(false);
   const [gameOverRazon, setGameOverRazon] = useState<string | undefined>();
@@ -97,6 +104,21 @@ export default function Game() {
     localStorage.setItem(DARK_MODE_KEY, String(newDarkMode));
     document.documentElement.classList.toggle("dark");
   }, [darkMode]);
+
+  const toggleMute = useCallback(() => {
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
+    localStorage.setItem(TTS_MUTE_KEY, String(newMuted));
+    if (newMuted) {
+      stopTTS();
+    }
+  }, [isMuted, stopTTS]);
+
+  const speakNarration = useCallback((text: string) => {
+    if (!isMuted && text) {
+      speak(text);
+    }
+  }, [isMuted, speak]);
 
   const handleStartGame = useCallback(async (level: SpanishLevel, duration: Duration) => {
     setIsLoading(true);
@@ -424,6 +446,17 @@ export default function Game() {
             <Button
               variant="ghost"
               size="icon"
+              onClick={toggleMute}
+              data-testid="button-toggle-mute"
+              title={isMuted ? "Activar narración" : "Silenciar narración"}
+              aria-label={isMuted ? "Activar narración" : "Silenciar narración"}
+            >
+              {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+            </Button>
+            
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={toggleDarkMode}
               data-testid="button-toggle-theme"
             >
@@ -533,6 +566,7 @@ export default function Game() {
                 onDismissPregunta={() => setPreguntaRespuesta(null)}
                 grammarFeedback={grammarFeedback}
                 onDismissGrammarFeedback={() => setGrammarFeedback(null)}
+                onSpeakNarration={speakNarration}
               />
             </div>
             

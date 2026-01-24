@@ -47,6 +47,7 @@ interface GameChatProps {
   onDismissPregunta?: () => void;
   grammarFeedback?: string | null;
   onDismissGrammarFeedback?: () => void;
+  onSpeakNarration?: (text: string) => void;
 }
 
 function DangerIndicator({ peligro }: { peligro?: Peligro }) {
@@ -183,15 +184,28 @@ export function GameChat({
   onDismissPregunta,
   grammarFeedback,
   onDismissGrammarFeedback,
+  onSpeakNarration,
 }: GameChatProps) {
   const [textInput, setTextInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const lastSpokenRef = useRef<string>("");
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [gameState.currentNarracion]);
+
+  useEffect(() => {
+    if (
+      onSpeakNarration &&
+      gameState.currentNarracion &&
+      gameState.currentNarracion !== lastSpokenRef.current
+    ) {
+      lastSpokenRef.current = gameState.currentNarracion;
+      onSpeakNarration(gameState.currentNarracion);
+    }
+  }, [gameState.currentNarracion, onSpeakNarration]);
 
   const handleOptionClick = (option: GameOption) => {
     if (!isLoading && !gameEnded) {
