@@ -196,6 +196,8 @@ export interface SelectPlotRequest {
   plotId: string;
   spanishLevel: SpanishLevel;
   duration: Duration;
+  customTitle?: string;
+  customDescription?: string;
 }
 
 export interface SelectPlotResponse {

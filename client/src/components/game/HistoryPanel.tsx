@@ -1,10 +1,8 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, X, Lightbulb } from "lucide-react";
+import { ChevronLeft, ChevronRight, Lightbulb } from "lucide-react";
 import type { TurnEntry } from "@shared/schema";
 
 interface HistoryPanelProps {
@@ -14,7 +12,7 @@ interface HistoryPanelProps {
 
 const TURNS_PER_PAGE = 10;
 
-export function HistoryPanel({ history, onClose }: HistoryPanelProps) {
+export function HistoryPanel({ history }: HistoryPanelProps) {
   const [currentPage, setCurrentPage] = useState(0);
   
   const totalPages = Math.ceil(history.length / TURNS_PER_PAGE);
@@ -35,22 +33,10 @@ export function HistoryPanel({ history, onClose }: HistoryPanelProps) {
   };
 
   return (
-    <Card className="h-[calc(100vh-180px)] flex flex-col">
-      <CardHeader className="pb-2 flex flex-row items-center justify-between gap-4">
-        <CardTitle className="text-lg">Historial de la Aventura</CardTitle>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onClose}
-          data-testid="button-close-history"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </CardHeader>
-
-      <ScrollArea className="flex-1 px-6">
+    <div className="flex flex-col">
+      <div className="flex-1">
         {history.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex items-center justify-center py-12">
             <p className="text-muted-foreground">No hay turnos anteriores</p>
           </div>
         ) : (
@@ -59,7 +45,7 @@ export function HistoryPanel({ history, onClose }: HistoryPanelProps) {
               <div key={turn.turnNumber} className="space-y-3">
                 {index > 0 && <Separator />}
                 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Badge variant="outline">Turno {turn.turnNumber}</Badge>
                   <Badge variant="secondary" className="text-xs">
                     {turn.inputMode}
@@ -91,11 +77,11 @@ export function HistoryPanel({ history, onClose }: HistoryPanelProps) {
             ))}
           </div>
         )}
-      </ScrollArea>
+      </div>
 
       {totalPages > 1 && (
-        <CardContent className="border-t pt-4">
-          <div className="flex items-center justify-between">
+        <div className="border-t pt-4 mt-4">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <Button
               variant="outline"
               size="sm"
@@ -122,8 +108,8 @@ export function HistoryPanel({ history, onClose }: HistoryPanelProps) {
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
-        </CardContent>
+        </div>
       )}
-    </Card>
+    </div>
   );
 }

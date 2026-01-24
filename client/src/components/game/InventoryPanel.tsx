@@ -30,7 +30,7 @@ export function InventoryPanel({ inventory, turnNumber, targetTurns, tension, pe
   const peligroInfo = peligro ? peligroConfig[peligro.nivel] : null;
 
   return (
-    <div className="space-y-4 sticky top-24">
+    <div className="space-y-4">
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">

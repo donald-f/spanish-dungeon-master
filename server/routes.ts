@@ -543,16 +543,27 @@ Responde con JSON: { "approved": true/false, "reason": "explicación breve si no
 
   app.post("/api/select-plot", async (req, res) => {
     try {
-      const { sessionId, plotId, spanishLevel, duration } = req.body as SelectPlotRequest;
+      const { sessionId, plotId, spanishLevel, duration, customTitle, customDescription } = req.body as SelectPlotRequest;
       
       const session = await storage.getSession(sessionId);
       if (!session) {
         return res.status(404).json({ error: "Sesión no encontrada" });
       }
       
-      const selectedPlot = session.plots?.find(p => p.id === plotId);
-      if (!selectedPlot) {
-        return res.status(400).json({ error: "Trama no encontrada" });
+      // Handle custom plots
+      let selectedPlot: PlotHook;
+      if (plotId === "custom" && customTitle && customDescription) {
+        selectedPlot = {
+          id: "custom",
+          titulo: customTitle,
+          descripcion: customDescription,
+        };
+      } else {
+        const foundPlot = session.plots?.find(p => p.id === plotId);
+        if (!foundPlot) {
+          return res.status(400).json({ error: "Trama no encontrada" });
+        }
+        selectedPlot = foundPlot;
       }
       
       const targetTurns = durationToTurns[duration];

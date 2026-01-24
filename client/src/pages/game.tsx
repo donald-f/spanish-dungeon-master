@@ -2,15 +2,18 @@ import { useState, useCallback, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Scroll, RotateCcw, Sun, Moon, AlertTriangle, Loader2 } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Scroll, RotateCcw, Sun, Moon, AlertTriangle, Loader2, Backpack, History } from "lucide-react";
 import type { GameState, SpanishLevel, Duration, PlotHook, InputMode, TurnEntry, ResumenAprendizajes, LearningEntry } from "@shared/schema";
 import { GameSetup } from "@/components/game/GameSetup";
 import { GameChat } from "@/components/game/GameChat";
 import { InventoryPanel } from "@/components/game/InventoryPanel";
 import { HistoryPanel } from "@/components/game/HistoryPanel";
+import { PlotSelection } from "@/components/game/PlotSelection";
 import { useToast } from "@/hooks/use-toast";
 
 const SESSION_STORAGE_KEY = "aventura_session_id";
+const DARK_MODE_KEY = "aventura_dark_mode";
 
 type GamePhase = "setup" | "selectPlot" | "playing" | "ended" | "loading";
 
@@ -24,7 +27,15 @@ export default function Game() {
   const [isLoading, setIsLoading] = useState(false);
   const [inputMode, setInputMode] = useState<InputMode>("Acción");
   const [showHistory, setShowHistory] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
+  const [showInventory, setShowInventory] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem(DARK_MODE_KEY);
+    const isDark = saved === "true";
+    if (isDark) {
+      document.documentElement.classList.add("dark");
+    }
+    return isDark;
+  });
   const [grammarFeedback, setGrammarFeedback] = useState<string | null>(null);
   const [limitError, setLimitError] = useState<string | null>(null);
   const [isGameOver, setIsGameOver] = useState(false);
@@ -81,7 +92,9 @@ export default function Game() {
   }, [clearSession, toast]);
 
   const toggleDarkMode = useCallback(() => {
-    setDarkMode(!darkMode);
+    const newDarkMode = !darkMode;
+    setDarkMode(newDarkMode);
+    localStorage.setItem(DARK_MODE_KEY, String(newDarkMode));
     document.documentElement.classList.toggle("dark");
   }, [darkMode]);
 
@@ -124,15 +137,23 @@ export default function Game() {
   const handleSelectPlot = useCallback(async (plot: PlotHook) => {
     setIsLoading(true);
     try {
+      const requestBody: Record<string, string> = {
+        sessionId,
+        plotId: plot.id,
+        spanishLevel: selectedLevel,
+        duration: selectedDuration,
+      };
+      
+      // Include custom plot details when selecting a custom plot
+      if (plot.id === "custom") {
+        requestBody.customTitle = plot.titulo;
+        requestBody.customDescription = plot.descripcion;
+      }
+      
       const response = await fetch("/api/select-plot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionId,
-          plotId: plot.id,
-          spanishLevel: selectedLevel,
-          duration: selectedDuration,
-        }),
+        body: JSON.stringify(requestBody),
       });
       
       if (!response.ok) throw new Error("Error al seleccionar la trama");
@@ -451,80 +472,107 @@ export default function Game() {
         )}
 
         {phase === "selectPlot" && (
-          <div className="max-w-3xl mx-auto space-y-6">
-            <Card>
-              <CardContent className="pt-6">
-                <h2 className="text-2xl font-bold text-center mb-6">Elige tu Aventura</h2>
-                <p className="text-muted-foreground text-center mb-8">
-                  Selecciona una de las siguientes tramas para comenzar tu historia:
-                </p>
-                
-                <div className="space-y-4">
-                  {plots.map((plot) => (
-                    <Card
-                      key={plot.id}
-                      className="hover-elevate cursor-pointer transition-all"
-                      onClick={() => !isLoading && handleSelectPlot(plot)}
-                      data-testid={`card-plot-${plot.id}`}
-                    >
-                      <CardContent className="pt-4 pb-4">
-                        <h3 className="font-semibold text-lg mb-2">{plot.titulo}</h3>
-                        <p className="text-muted-foreground story-text">{plot.descripcion}</p>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-                
-                {isLoading && (
-                  <div className="flex justify-center mt-6">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+          <PlotSelection
+            initialPlots={plots}
+            sessionId={sessionId}
+            spanishLevel={selectedLevel}
+            duration={selectedDuration}
+            onSelectPlot={handleSelectPlot}
+            isLoading={isLoading}
+          />
         )}
 
         {(phase === "playing" || phase === "ended") && gameState && (
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <div className="lg:col-span-3">
-              {showHistory ? (
-                <HistoryPanel
-                  history={gameState.history}
-                  onClose={() => setShowHistory(false)}
-                />
-              ) : (
-                <GameChat
-                  gameState={gameState}
-                  inputMode={inputMode}
-                  onModeChange={setInputMode}
-                  onSendAction={handleSendAction}
-                  onShowHistory={() => setShowHistory(true)}
-                  isLoading={isLoading}
-                  gameEnded={phase === "ended"}
-                  isGameOver={isGameOver}
-                  gameOverRazon={gameOverRazon}
-                  isFinal={isFinal}
-                  finalRazon={finalRazon}
-                  resumenAprendizajes={resumenAprendizajes}
-                  preguntaRespuesta={preguntaRespuesta}
-                  onDismissPregunta={() => setPreguntaRespuesta(null)}
-                  grammarFeedback={grammarFeedback}
-                  onDismissGrammarFeedback={() => setGrammarFeedback(null)}
-                />
-              )}
-            </div>
-            
-            <div className="lg:col-span-1">
-              <InventoryPanel
-                inventory={gameState.inventory}
-                turnNumber={gameState.turnIndex}
-                targetTurns={gameState.targetTurns}
-                tension={gameState.tension}
-                peligro={gameState.currentPeligro}
+          <>
+            <div className="max-w-4xl mx-auto">
+              <div className="flex gap-2 mb-4 justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowInventory(true)}
+                  data-testid="button-open-inventory"
+                >
+                  <Backpack className="h-4 w-4 mr-2" />
+                  Inventario
+                  {gameState.inventory.items.length > 0 && (
+                    <span className="ml-1 text-xs bg-primary/20 rounded-full px-1.5">
+                      {gameState.inventory.items.length}
+                    </span>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowHistory(true)}
+                  data-testid="button-open-history"
+                >
+                  <History className="h-4 w-4 mr-2" />
+                  Historial
+                  {gameState.history.length > 0 && (
+                    <span className="ml-1 text-xs bg-primary/20 rounded-full px-1.5">
+                      {gameState.history.length}
+                    </span>
+                  )}
+                </Button>
+              </div>
+              
+              <GameChat
+                gameState={gameState}
+                inputMode={inputMode}
+                onModeChange={setInputMode}
+                onSendAction={handleSendAction}
+                onShowHistory={() => setShowHistory(true)}
+                isLoading={isLoading}
+                gameEnded={phase === "ended"}
+                isGameOver={isGameOver}
+                gameOverRazon={gameOverRazon}
+                isFinal={isFinal}
+                finalRazon={finalRazon}
+                resumenAprendizajes={resumenAprendizajes}
+                preguntaRespuesta={preguntaRespuesta}
+                onDismissPregunta={() => setPreguntaRespuesta(null)}
+                grammarFeedback={grammarFeedback}
+                onDismissGrammarFeedback={() => setGrammarFeedback(null)}
               />
             </div>
-          </div>
+            
+            <Sheet open={showInventory} onOpenChange={setShowInventory}>
+              <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+                <SheetHeader>
+                  <SheetTitle className="flex items-center gap-2">
+                    <Backpack className="h-5 w-5 text-primary" />
+                    Inventario y Estado
+                  </SheetTitle>
+                </SheetHeader>
+                <div className="mt-6">
+                  <InventoryPanel
+                    inventory={gameState.inventory}
+                    turnNumber={gameState.turnIndex}
+                    targetTurns={gameState.targetTurns}
+                    tension={gameState.tension}
+                    peligro={gameState.currentPeligro}
+                  />
+                </div>
+              </SheetContent>
+            </Sheet>
+            
+            <Sheet open={showHistory} onOpenChange={setShowHistory}>
+              <SheetContent side="left" className="w-full sm:max-w-lg overflow-y-auto">
+                <SheetHeader>
+                  <SheetTitle className="flex items-center gap-2">
+                    <History className="h-5 w-5 text-primary" />
+                    Historial de la Aventura
+                  </SheetTitle>
+                </SheetHeader>
+                <div className="mt-6">
+                  <HistoryPanel
+                    history={gameState.history}
+                    onClose={() => setShowHistory(false)}
+                  />
+                </div>
+              </SheetContent>
+            </Sheet>
+          </>
         )}
       </main>
     </div>
