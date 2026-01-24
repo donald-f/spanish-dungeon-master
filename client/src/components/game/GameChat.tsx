@@ -6,8 +6,29 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
-import { Send, History, Lightbulb, Sword, HelpCircle, Trophy, X, MessageCircle, PenTool, AlertTriangle, Heart, Skull, Shield, Zap } from "lucide-react";
-import type { GameState, InputMode, GameOption, Peligro, ResumenAprendizajes } from "@shared/schema";
+import {
+  Send,
+  History,
+  Lightbulb,
+  Sword,
+  HelpCircle,
+  Trophy,
+  X,
+  MessageCircle,
+  PenTool,
+  AlertTriangle,
+  Heart,
+  Skull,
+  Shield,
+  Zap,
+} from "lucide-react";
+import type {
+  GameState,
+  InputMode,
+  GameOption,
+  Peligro,
+  ResumenAprendizajes,
+} from "@shared/schema";
 
 interface GameChatProps {
   gameState: GameState;
@@ -30,27 +51,31 @@ interface GameChatProps {
 
 function DangerIndicator({ peligro }: { peligro?: Peligro }) {
   if (!peligro) return null;
-  
+
   const colors = {
     bajo: "bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30",
-    medio: "bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-500/30",
+    medio:
+      "bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-500/30",
     alto: "bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30",
   };
-  
+
   const icons = {
     bajo: <Shield className="h-4 w-4" />,
     medio: <AlertTriangle className="h-4 w-4" />,
     alto: <Zap className="h-4 w-4" />,
   };
-  
+
   const labels = {
     bajo: "Peligro Bajo",
     medio: "Peligro Medio",
     alto: "¡Peligro Alto!",
   };
-  
+
   return (
-    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${colors[peligro.nivel]}`} data-testid="danger-indicator">
+    <div
+      className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${colors[peligro.nivel]}`}
+      data-testid="danger-indicator"
+    >
       {icons[peligro.nivel]}
       <div className="flex-1 min-w-0">
         <span className="font-medium text-sm">{labels[peligro.nivel]}</span>
@@ -60,9 +85,16 @@ function DangerIndicator({ peligro }: { peligro?: Peligro }) {
   );
 }
 
-function HealthBar({ salud, estadoAfectos }: { salud: number; estadoAfectos: string[] }) {
-  const healthColor = salud > 60 ? "bg-green-500" : salud > 30 ? "bg-yellow-500" : "bg-red-500";
-  
+function HealthBar({
+  salud,
+  estadoAfectos,
+}: {
+  salud: number;
+  estadoAfectos: string[];
+}) {
+  const healthColor =
+    salud > 60 ? "bg-green-500" : salud > 30 ? "bg-yellow-500" : "bg-red-500";
+
   return (
     <div className="space-y-2" data-testid="health-bar">
       <div className="flex items-center gap-2">
@@ -87,12 +119,15 @@ function HealthBar({ salud, estadoAfectos }: { salud: number; estadoAfectos: str
 
 function LearningSummary({ resumen }: { resumen: ResumenAprendizajes }) {
   return (
-    <div className="space-y-4 p-4 rounded-lg bg-primary/5 border border-primary/20" data-testid="learning-summary">
+    <div
+      className="space-y-4 p-4 rounded-lg bg-primary/5 border border-primary/20"
+      data-testid="learning-summary"
+    >
       <h3 className="font-bold text-lg flex items-center gap-2">
         <Lightbulb className="h-5 w-5 text-primary" />
         Resumen de Aprendizajes
       </h3>
-      
+
       {resumen.puntos.length > 0 && (
         <div>
           <h4 className="font-medium text-sm mb-2">Lo que aprendiste:</h4>
@@ -103,7 +138,7 @@ function LearningSummary({ resumen }: { resumen: ResumenAprendizajes }) {
           </ul>
         </div>
       )}
-      
+
       {resumen.errores_frecuentes.length > 0 && (
         <div>
           <h4 className="font-medium text-sm mb-2">Errores para mejorar:</h4>
@@ -114,10 +149,12 @@ function LearningSummary({ resumen }: { resumen: ResumenAprendizajes }) {
           </ul>
         </div>
       )}
-      
+
       {resumen.frases_utiles.length > 0 && (
         <div>
-          <h4 className="font-medium text-sm mb-2">Frases útiles de la aventura:</h4>
+          <h4 className="font-medium text-sm mb-2">
+            Frases útiles de la aventura:
+          </h4>
           <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
             {resumen.frases_utiles.map((frase, i) => (
               <li key={i}>{frase}</li>
@@ -187,7 +224,7 @@ export function GameChat({
             Nivel {gameState.spanishLevel}
           </Badge>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <div className="flex rounded-lg border overflow-hidden">
             <button
@@ -197,7 +234,9 @@ export function GameChat({
                   ? "bg-primary text-primary-foreground"
                   : "hover:bg-muted"
               }`}
-              disabled={!gameState.permitirPreguntas && inputMode === "Pregunta"}
+              disabled={
+                !gameState.permitirPreguntas && inputMode === "Pregunta"
+              }
               data-testid="button-mode-accion"
             >
               <Sword className="h-3.5 w-3.5" />
@@ -217,7 +256,7 @@ export function GameChat({
               Pregunta
             </button>
           </div>
-          
+
           <Button
             variant="ghost"
             size="icon"
@@ -228,49 +267,42 @@ export function GameChat({
           </Button>
         </div>
       </div>
-      
+
       <div className="px-4 py-2 border-b">
-        <HealthBar salud={gameState.salud ?? 100} estadoAfectos={gameState.estadoAfectos ?? []} />
+        <HealthBar
+          salud={gameState.salud ?? 100}
+          estadoAfectos={gameState.estadoAfectos ?? []}
+        />
       </div>
 
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
         <div className="space-y-6">
-          {gameState.history.slice(-4, -1).map((turn, index) => (
-            <div key={turn.turnNumber} className="space-y-3">
-              {index > 0 && <Separator className="my-4" />}
-              
-              <div className="bg-muted/50 rounded-lg p-3">
-                <p className="text-sm text-muted-foreground">Tu acción:</p>
-                <p className="font-medium">{turn.userInput}</p>
-              </div>
-              
-              <div className="story-text leading-relaxed whitespace-pre-wrap text-muted-foreground">
-                {turn.narracion}
-              </div>
-              
-            </div>
-          ))}
-          
           {gameState.history.length > 1 && <Separator className="my-4" />}
-          
+
           {gameState.history.length > 0 && (
             <div className="bg-muted/50 rounded-lg p-3">
               <p className="text-sm text-muted-foreground">Tu acción:</p>
-              <p className="font-medium">{gameState.history[gameState.history.length - 1].userInput}</p>
+              <p className="font-medium">
+                {gameState.history[gameState.history.length - 1].userInput}
+              </p>
             </div>
           )}
-          
+
           <div className="story-text leading-relaxed whitespace-pre-wrap">
             {gameState.currentNarracion}
           </div>
-          
-          
+
           {preguntaRespuesta && (
-            <div className="flex items-start gap-2 p-4 rounded-lg bg-primary/10 border border-primary/30" data-testid="pregunta-respuesta">
+            <div
+              className="flex items-start gap-2 p-4 rounded-lg bg-primary/10 border border-primary/30"
+              data-testid="pregunta-respuesta"
+            >
               <MessageCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium text-primary">Respuesta del Profesor</span>
+                  <span className="text-sm font-medium text-primary">
+                    Respuesta del Profesor
+                  </span>
                   {onDismissPregunta && (
                     <Button
                       variant="ghost"
@@ -286,13 +318,18 @@ export function GameChat({
               </div>
             </div>
           )}
-          
+
           {grammarFeedback && (
-            <div className="flex items-start gap-2 p-4 rounded-lg bg-green-500/10 border border-green-500/30" data-testid="grammar-feedback">
+            <div
+              className="flex items-start gap-2 p-4 rounded-lg bg-green-500/10 border border-green-500/30"
+              data-testid="grammar-feedback"
+            >
               <PenTool className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium text-green-600 dark:text-green-400">Corrección de Español</span>
+                  <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                    Corrección de Español
+                  </span>
                   {onDismissGrammarFeedback && (
                     <Button
                       variant="ghost"
@@ -308,13 +345,18 @@ export function GameChat({
               </div>
             </div>
           )}
-          
+
           {isGameOver && (
-            <div className="flex flex-col items-center gap-4 py-8" data-testid="game-over-screen">
+            <div
+              className="flex flex-col items-center gap-4 py-8"
+              data-testid="game-over-screen"
+            >
               <div className="p-4 rounded-full bg-destructive/10">
                 <Skull className="h-12 w-12 text-destructive" />
               </div>
-              <h2 className="text-2xl font-bold text-center text-destructive">Fin del Juego</h2>
+              <h2 className="text-2xl font-bold text-center text-destructive">
+                Fin del Juego
+              </h2>
               {gameOverRazon && (
                 <p className="text-muted-foreground text-center max-w-md story-text">
                   {gameOverRazon}
@@ -323,36 +365,49 @@ export function GameChat({
               <p className="text-sm text-muted-foreground text-center">
                 La aventura ha terminado. Pero aprendiste algo nuevo en español.
               </p>
-              {resumenAprendizajes && <LearningSummary resumen={resumenAprendizajes} />}
+              {resumenAprendizajes && (
+                <LearningSummary resumen={resumenAprendizajes} />
+              )}
             </div>
           )}
-          
+
           {isFinal && !isGameOver && (
-            <div className="flex flex-col items-center gap-4 py-8" data-testid="victory-screen">
+            <div
+              className="flex flex-col items-center gap-4 py-8"
+              data-testid="victory-screen"
+            >
               <div className="p-4 rounded-full bg-primary/10">
                 <Trophy className="h-12 w-12 text-primary" />
               </div>
-              <h2 className="text-2xl font-bold text-center">¡Aventura Completada!</h2>
+              <h2 className="text-2xl font-bold text-center">
+                ¡Aventura Completada!
+              </h2>
               {finalRazon && (
                 <p className="text-muted-foreground text-center max-w-md story-text">
                   {finalRazon}
                 </p>
               )}
               <p className="text-sm text-muted-foreground text-center">
-                ¡Felicitaciones por completar la aventura y practicar tu español!
+                ¡Felicitaciones por completar la aventura y practicar tu
+                español!
               </p>
-              {resumenAprendizajes && <LearningSummary resumen={resumenAprendizajes} />}
+              {resumenAprendizajes && (
+                <LearningSummary resumen={resumenAprendizajes} />
+              )}
             </div>
           )}
-          
+
           {gameEnded && !isGameOver && !isFinal && (
             <div className="flex flex-col items-center gap-4 py-8">
               <div className="p-4 rounded-full bg-primary/10">
                 <Trophy className="h-12 w-12 text-primary" />
               </div>
-              <h2 className="text-2xl font-bold text-center">¡Aventura Completada!</h2>
+              <h2 className="text-2xl font-bold text-center">
+                ¡Aventura Completada!
+              </h2>
               <p className="text-muted-foreground text-center max-w-md">
-                Has terminado tu aventura en español. ¡Felicitaciones por practicar el idioma de una manera tan divertida!
+                Has terminado tu aventura en español. ¡Felicitaciones por
+                practicar el idioma de una manera tan divertida!
               </p>
             </div>
           )}
@@ -372,7 +427,9 @@ export function GameChat({
                   disabled={isLoading}
                   data-testid={`button-option-${option.id}`}
                 >
-                  <Badge variant="secondary" className="mr-2 shrink-0">{option.id}</Badge>
+                  <Badge variant="secondary" className="mr-2 shrink-0">
+                    {option.id}
+                  </Badge>
                   <span className="text-wrap">{option.texto}</span>
                 </Button>
               ))}
@@ -408,13 +465,15 @@ export function GameChat({
               </Button>
             </div>
           )}
-          
-          {!gameState.permitirTextoLibre && inputMode === "Acción" && gameState.currentOptions.length > 0 && (
-            <p className="text-sm text-muted-foreground text-center">
-              Debes elegir una de las opciones anteriores.
-            </p>
-          )}
-          
+
+          {!gameState.permitirTextoLibre &&
+            inputMode === "Acción" &&
+            gameState.currentOptions.length > 0 && (
+              <p className="text-sm text-muted-foreground text-center">
+                Debes elegir una de las opciones anteriores.
+              </p>
+            )}
+
           {isLoading && (
             <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
