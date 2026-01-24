@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { pgTable, text, jsonb, timestamp, integer, primaryKey, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, jsonb, timestamp, integer, primaryKey, boolean, serial, index } from "drizzle-orm/pg-core";
 
 // Database tables (Drizzle ORM)
 export const gameSessions = pgTable("game_sessions", {
@@ -17,6 +17,21 @@ export const usageTracking = pgTable("usage_tracking", {
 }, (table) => ({
   pk: primaryKey({ columns: [table.year, table.month] }),
 }));
+
+// Preset plots table for DB-backed story options
+export const presetPlots = pgTable("preset_plots", {
+  id: serial("id").primaryKey(),
+  spanishLevel: text("spanish_level").notNull(), // A2, B1, B2
+  duration: text("duration").notNull(), // corta, media, larga
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  levelDurationIdx: index("preset_plots_level_duration_idx").on(table.spanishLevel, table.duration),
+}));
+
+export type PresetPlot = typeof presetPlots.$inferSelect;
+export type InsertPresetPlot = typeof presetPlots.$inferInsert;
 
 // Game configuration options
 export const spanishLevels = ["A2", "B1", "B2"] as const;

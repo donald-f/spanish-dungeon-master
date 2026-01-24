@@ -16,8 +16,10 @@ import type {
   LearningEntry,
   ResumenAprendizajes
 } from "@shared/schema";
-import { durationToTurns, aiResponseSchema } from "@shared/schema";
+import { durationToTurns, aiResponseSchema, presetPlots } from "@shared/schema";
 import { canPlayTurns, incrementTurnCount, getTurnsRemaining, getUsageStats } from "./usageTracker";
+import { db } from "./db";
+import { eq, and } from "drizzle-orm";
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -353,6 +355,46 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error in /api/session:", error);
       res.status(500).json({ error: "Error al recuperar la sesión" });
+    }
+  });
+
+  // Get preset plots with pagination
+  app.get("/api/plots", async (req, res) => {
+    try {
+      const spanishLevel = req.query.spanishLevel as string;
+      const duration = req.query.duration as string;
+      const limit = Math.min(parseInt(req.query.limit as string) || 3, 50);
+      const offset = parseInt(req.query.offset as string) || 0;
+      
+      if (!spanishLevel || !duration) {
+        return res.status(400).json({ error: "spanishLevel and duration are required" });
+      }
+      
+      const plots = await db
+        .select({
+          id: presetPlots.id,
+          title: presetPlots.title,
+          description: presetPlots.description,
+        })
+        .from(presetPlots)
+        .where(and(
+          eq(presetPlots.spanishLevel, spanishLevel),
+          eq(presetPlots.duration, duration)
+        ))
+        .limit(limit)
+        .offset(offset);
+      
+      res.json({ 
+        plots: plots.map(p => ({
+          id: String(p.id),
+          titulo: p.title,
+          descripcion: p.description,
+        })),
+        hasMore: plots.length === limit,
+      });
+    } catch (error) {
+      console.error("Error in /api/plots:", error);
+      res.status(500).json({ error: "Error al obtener las tramas" });
     }
   });
 

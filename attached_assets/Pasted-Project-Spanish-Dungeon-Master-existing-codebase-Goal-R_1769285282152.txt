@@ -1,0 +1,103 @@
+Project: Spanish-Dungeon-Master (existing codebase)
+
+Goal: Replace AI-generated plot options with DB-backed preset plots, plus allow a user-defined plot with strong anti-PII guardrails, and significantly improve UX—especially on mobile (iPhone SE)—by redesigning the layout around a chat-first experience. Desktop UX may change as needed as long as the overall feel remains consistent and polished.
+
+1) Database / Schema
+- Add a new DB table for plot presets.
+- Columns (name appropriately using existing conventions):
+  - id (primary key; PlotID equivalent)
+  - spanish_level (enum or constrained string aligned to existing spanishLevel options in the app)
+  - duration (enum or constrained string aligned to existing duration options)
+  - title (short plot title)
+  - description (plotDescription; Spanish text)
+  - created_at
+- Add any indexes needed for fast lookup by (spanish_level, duration).
+
+2) Seeding preset plots
+- Create a seed script / migration step that inserts preset plots.
+- Seed *at least* 100 plots per (spanish_level, duration) combination that the app currently supports.
+- Make seeding idempotent (safe to run multiple times; do not duplicate).
+- Plots should be Spanish-only, appropriate for a Spanish-learning adventure DM game, and varied.
+- Keep plot title + description short enough to display nicely on mobile but descriptive enough to be informative for the user.
+
+3) API endpoints
+Add endpoints that the client can call:
+- GET /api/plots?spanishLevel=...&duration=...&limit=3
+  - Returns the first N plots quickly.
+- GET /api/plots?spanishLevel=...&duration=...&offset=...&limit=...
+  - Supports paging to fetch more plots ("show me different ones").
+Optionally, a single endpoint can support both by accepting offset/limit.
+
+4) Frontend changes: plot selection UX
+- During GameSetup, show 3 plot options initially (existing behavior).
+- Add a “Show more plots” / “Different options” control that loads additional plots for the same spanishLevel/duration.
+- Decide whether to prefetch remaining plots in the background:
+  - If total payload is small, one request may be fine.
+  - If not, implement paging + background prefetch after initial 3 render.
+- The UI must remain fast on iPhone SE.
+- The user’s chosen plot title + description should appear prominently at the top of the History view while in-game.
+
+5) User-defined plot (custom plot) with guardrails
+- Add a subtle UI option like “Crear mi propia aventura” (not as prominent as presets).
+- Custom plot requires:
+  - Minimum length: 50 characters (title) and 200 characters (description)
+  - Maximum length: 120 characters (title) and 1500 characters (description)
+- Implement PII detection WITHOUT AI first (both client-side AND server-side), rejecting input that contains:
+  - Email addresses
+  - Phone numbers
+  - SSNs (US-style)
+  - Obvious “contact me” patterns with digits
+  - (Use regex-based checks; keep false positives reasonable)
+- If it passes regex checks, then call the existing AI moderation/validation step:
+  - Ask the model to confirm the plot is appropriate for the app and contains no personal info.
+  - If the AI flags it, reject and show a friendly Spanish error message.
+- If accepted:
+  - Store it in DB associated to the session (or store in a separate custom_plots table), but do NOT store any content that failed validation.
+- Ensure the same guardrail logic is also applied to in-game user inputs (“pregunta” / “acción”):
+  - If a message includes email/phone/ssn or similar sensitive info, reject the action and ask the user (in Spanish) to rephrase without personal info.
+  - Do NOT send disallowed content to the AI and do NOT store it.
+
+6) UX redesign: Chat-first layout with Drawer-based secondary views
+- The primary experience should be the story/chat feed with a sticky message input.
+- The story/chat area should be the dominant, full-height content on both mobile and desktop.
+- Inventory and History must still exist, but should NOT permanently shrink the story area.
+
+Mobile:
+- Implement Inventory and History inside a bottom drawer (Sheet / Drawer pattern).
+- Drawer behavior:
+  - Closed by default; accessible via a small handle or icon.
+  - Can expand to partial height or full screen.
+  - Contains tabs for “Historia” and “Inventario”.
+- The message input must remain sticky at the bottom with proper iOS safe-area padding.
+- Avoid nested scroll areas:
+  - The chat/story feed should be the primary scroll.
+  - Drawer content may scroll independently when open.
+- Increase story readability on small screens (typography, spacing, line length).
+
+Desktop:
+- Use the same conceptual layout for consistency.
+- Drawer may appear from the right side instead of the bottom.
+- Allow collapsing/expanding Inventory/History without affecting the main chat width unless explicitly opened.
+- Optional keyboard shortcuts:
+  - I = toggle Inventory
+  - H = toggle History
+  - Esc = close drawer
+  - 1 / 2 / 3 = select suggested responses
+
+General UX constraints:
+- Keep all existing functionality and information, but reorganize presentation.
+- Avoid permanently visible side panels that reduce story space.
+- Use existing component patterns (Tailwind, shadcn/ui).
+- The result should feel like a polished, app-like experience—not a cramped dashboard.
+
+7) Make dark mode preference persistent using localStorage
+
+8) Deliverables
+- DB migration + seed logic
+- Server routes/endpoints
+- Frontend UI updates (including layout rework)
+- Shared types updated if needed
+- Tests:
+  - At minimum, unit tests for the PII validation helper (email/phone/ssn detection)
+  - Ensure server rejects disallowed content
+- Update any docs/readme if necessary
