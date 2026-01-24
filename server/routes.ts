@@ -3,21 +3,26 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import OpenAI from "openai";
 import { z } from "zod";
-import type { 
-  StartRequest, 
-  StartResponse, 
+import type {
+  StartRequest,
+  StartResponse,
   SelectPlotRequest,
   SelectPlotResponse,
-  TurnRequest, 
+  TurnRequest,
   TurnResponse,
   PlotHook,
   AIResponse,
   GameState,
   LearningEntry,
-  ResumenAprendizajes
+  ResumenAprendizajes,
 } from "@shared/schema";
 import { durationToTurns, aiResponseSchema, presetPlots } from "@shared/schema";
-import { canPlayTurns, incrementTurnCount, getTurnsRemaining, getUsageStats } from "./usageTracker";
+import {
+  canPlayTurns,
+  incrementTurnCount,
+  getTurnsRemaining,
+  getUsageStats,
+} from "./usageTracker";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
 import { validateNoPII, getPIIErrorMessage } from "@shared/piiValidation";
@@ -54,6 +59,16 @@ PRINCIPIOS FUNDAMENTALES
    - Usa el campo "peligro" para indicar nivel y razón cada turno
    - No muertes aleatorias o inexplicables
    - El jugador debe sentir que su muerte fue MERECIDA por sus acciones
+
+4. ESPAÑOL NATURAL Y APROPIADO AL NIVEL
+ - Adapta vocabulario y gramática al nivel del jugador
+ - Corrige errores sutilmente en "resumen_aprendizajes"
+ - Mantén la inmersión total en español
+
+5. PROGRESIÓN DE HISTORIA
+ - La historia debe avanzar hacia un clímax según la duración elegida
+ - Mantén tensión y ritmo apropiados
+ - No te estanques en detalles irrelevantes
 
 ═══════════════════════════════════════
 REGLAS DE RESPUESTA
@@ -210,9 +225,12 @@ Responde SOLO con JSON válido:
 }`;
 
 function parseAIResponse(content: string): AIResponse {
-  const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+  const cleaned = content
+    .replace(/```json\n?/g, "")
+    .replace(/```\n?/g, "")
+    .trim();
   const parsed = JSON.parse(cleaned);
-  
+
   if (parsed.game_over || parsed.final) {
     parsed.opciones = [];
     parsed.permitir_texto_libre = false;
@@ -220,29 +238,37 @@ function parseAIResponse(content: string): AIResponse {
     if (!parsed.opciones || parsed.opciones.length < 2) {
       parsed.opciones = [
         { id: "A", texto: "Continuar explorando" },
-        { id: "B", texto: "Investigar más" }
+        { id: "B", texto: "Investigar más" },
       ];
     }
-    
+
     if (parsed.opciones.length > 4) {
       parsed.opciones = parsed.opciones.slice(0, 4);
     }
-    
+
     const validIds = ["A", "B", "C", "D"];
     parsed.opciones = parsed.opciones.map((opt: any, index: number) => ({
       id: validIds[index],
-      texto: opt.texto || `Opción ${validIds[index]}`
+      texto: opt.texto || `Opción ${validIds[index]}`,
     }));
   }
-  
+
+  // Preguntas: solo desactivar preguntas cuando el juego terminó por muerte (game_over).
+  // Incluso si hay un "final" (victoria/epílogo), permitir preguntas sigue siendo útil para practicar español.
+  if (parsed.game_over) {
+    parsed.permitir_preguntas = false;
+  } else {
+    parsed.permitir_preguntas = true;
+  }
+
   if (!parsed.peligro) {
     parsed.peligro = { nivel: "bajo", razon: "Situación tranquila" };
   }
-  
+
   if (!parsed.cambio_estado) {
     parsed.cambio_estado = {};
   }
-  
+
   if (parsed.resumen_aprendizajes) {
     if (typeof parsed.resumen_aprendizajes === "string") {
       parsed.resumen_aprendizajes = {
@@ -252,21 +278,31 @@ function parseAIResponse(content: string): AIResponse {
       };
     } else if (typeof parsed.resumen_aprendizajes === "object") {
       parsed.resumen_aprendizajes = {
-        puntos: Array.isArray(parsed.resumen_aprendizajes.puntos) ? parsed.resumen_aprendizajes.puntos : [],
-        errores_frecuentes: Array.isArray(parsed.resumen_aprendizajes.errores_frecuentes) ? parsed.resumen_aprendizajes.errores_frecuentes : [],
-        frases_utiles: Array.isArray(parsed.resumen_aprendizajes.frases_utiles) ? parsed.resumen_aprendizajes.frases_utiles : [],
+        puntos: Array.isArray(parsed.resumen_aprendizajes.puntos)
+          ? parsed.resumen_aprendizajes.puntos
+          : [],
+        errores_frecuentes: Array.isArray(
+          parsed.resumen_aprendizajes.errores_frecuentes,
+        )
+          ? parsed.resumen_aprendizajes.errores_frecuentes
+          : [],
+        frases_utiles: Array.isArray(parsed.resumen_aprendizajes.frases_utiles)
+          ? parsed.resumen_aprendizajes.frases_utiles
+          : [],
       };
     }
   }
-  
+
   return aiResponseSchema.parse(parsed);
 }
 
-function generateLearningSummary(learningLog: LearningEntry[]): ResumenAprendizajes {
+function generateLearningSummary(
+  learningLog: LearningEntry[],
+): ResumenAprendizajes {
   const puntos: string[] = [];
   const errores: string[] = [];
   const frases: string[] = [];
-  
+
   for (const entry of learningLog) {
     if (entry.tipo === "correccion") {
       errores.push(entry.contenido);
@@ -276,7 +312,7 @@ function generateLearningSummary(learningLog: LearningEntry[]): ResumenAprendiza
       puntos.push(`Pregunta: ${entry.contenido}`);
     }
   }
-  
+
   return {
     puntos: puntos.slice(0, 15),
     errores_frecuentes: errores.slice(0, 10),
@@ -288,14 +324,14 @@ function mergeLearningSummaries(
   existing: ResumenAprendizajes | undefined,
   newFromAI: ResumenAprendizajes | undefined,
   grammarCorrection?: string,
-  preguntaLearning?: string
+  preguntaLearning?: string,
 ): ResumenAprendizajes {
   const merged: ResumenAprendizajes = {
     puntos: [...(existing?.puntos || [])],
     errores_frecuentes: [...(existing?.errores_frecuentes || [])],
     frases_utiles: [...(existing?.frases_utiles || [])],
   };
-  
+
   if (newFromAI) {
     if (newFromAI.puntos) {
       for (const punto of newFromAI.puntos) {
@@ -319,27 +355,29 @@ function mergeLearningSummaries(
       }
     }
   }
-  
-  if (grammarCorrection && !merged.errores_frecuentes.includes(grammarCorrection)) {
+
+  if (
+    grammarCorrection &&
+    !merged.errores_frecuentes.includes(grammarCorrection)
+  ) {
     merged.errores_frecuentes.push(grammarCorrection);
   }
-  
+
   if (preguntaLearning && !merged.puntos.includes(preguntaLearning)) {
     merged.puntos.push(preguntaLearning);
   }
-  
+
   merged.puntos = merged.puntos.slice(-20);
   merged.errores_frecuentes = merged.errores_frecuentes.slice(-15);
   merged.frases_utiles = merged.frases_utiles.slice(-15);
-  
+
   return merged;
 }
 
 export async function registerRoutes(
   httpServer: Server,
-  app: Express
+  app: Express,
 ): Promise<Server> {
-  
   app.get("/api/usage", async (req, res) => {
     res.json(await getUsageStats());
   });
@@ -348,16 +386,16 @@ export async function registerRoutes(
     try {
       const { sessionId } = req.params;
       const session = await storage.getSession(sessionId);
-      
+
       if (!session || !session.gameState) {
         return res.status(404).json({ error: "session_not_found" });
       }
-      
+
       if (session.gameState.gameEnded) {
         return res.status(410).json({ error: "session_ended" });
       }
-      
-      res.json({ 
+
+      res.json({
         gameState: session.gameState,
         plots: session.plots,
       });
@@ -374,11 +412,13 @@ export async function registerRoutes(
       const duration = req.query.duration as string;
       const limit = Math.min(parseInt(req.query.limit as string) || 3, 50);
       const offset = parseInt(req.query.offset as string) || 0;
-      
+
       if (!spanishLevel || !duration) {
-        return res.status(400).json({ error: "spanishLevel and duration are required" });
+        return res
+          .status(400)
+          .json({ error: "spanishLevel and duration are required" });
       }
-      
+
       const plots = await db
         .select({
           id: presetPlots.id,
@@ -386,15 +426,17 @@ export async function registerRoutes(
           description: presetPlots.description,
         })
         .from(presetPlots)
-        .where(and(
-          eq(presetPlots.spanishLevel, spanishLevel),
-          eq(presetPlots.duration, duration)
-        ))
+        .where(
+          and(
+            eq(presetPlots.spanishLevel, spanishLevel),
+            eq(presetPlots.duration, duration),
+          ),
+        )
         .limit(limit)
         .offset(offset);
-      
-      res.json({ 
-        plots: plots.map(p => ({
+
+      res.json({
+        plots: plots.map((p) => ({
           id: String(p.id),
           titulo: p.title,
           descripcion: p.description,
@@ -410,42 +452,49 @@ export async function registerRoutes(
   // Validate custom plot - PII check first, then AI moderation
   app.post("/api/validate-custom-plot", async (req, res) => {
     try {
-      const { title, description } = req.body as { title: string; description: string };
-      
+      const { title, description } = req.body as {
+        title: string;
+        description: string;
+      };
+
       // Length validation
       if (!title || title.length < 10 || title.length > 120) {
-        return res.status(400).json({ 
-          valid: false, 
-          error: "El título debe tener entre 10 y 120 caracteres." 
+        return res.status(400).json({
+          valid: false,
+          error: "El título debe tener entre 10 y 120 caracteres.",
         });
       }
-      if (!description || description.length < 50 || description.length > 1500) {
-        return res.status(400).json({ 
-          valid: false, 
-          error: "La descripción debe tener entre 50 y 1500 caracteres." 
+      if (
+        !description ||
+        description.length < 50 ||
+        description.length > 1500
+      ) {
+        return res.status(400).json({
+          valid: false,
+          error: "La descripción debe tener entre 50 y 1500 caracteres.",
         });
       }
-      
+
       // PII validation (regex-based)
       const titlePII = validateNoPII(title);
       const descPII = validateNoPII(description);
-      
+
       if (!titlePII.isValid) {
-        return res.status(400).json({ 
-          valid: false, 
+        return res.status(400).json({
+          valid: false,
           error: getPIIErrorMessage(titlePII),
           piiDetected: true,
         });
       }
-      
+
       if (!descPII.isValid) {
-        return res.status(400).json({ 
-          valid: false, 
+        return res.status(400).json({
+          valid: false,
           error: getPIIErrorMessage(descPII),
           piiDetected: true,
         });
       }
-      
+
       // AI moderation check
       const moderationPrompt = `Analiza el siguiente contenido para un juego de aventura en español. Verifica que:
 1. NO contenga información personal (nombres reales, direcciones, teléfonos, emails)
@@ -460,54 +509,69 @@ Responde con JSON: { "approved": true/false, "reason": "explicación breve si no
       const moderation = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
-          { role: "system", content: "Eres un moderador de contenido para un juego educativo. Responde solo con JSON válido." },
-          { role: "user", content: moderationPrompt }
+          {
+            role: "system",
+            content:
+              "Eres un moderador de contenido para un juego educativo. Responde solo con JSON válido.",
+          },
+          { role: "user", content: moderationPrompt },
         ],
         max_completion_tokens: 200,
       });
-      
-      const modContent = moderation.choices[0]?.message?.content || '{"approved": true}';
+
+      const modContent =
+        moderation.choices[0]?.message?.content || '{"approved": true}';
       let modResult;
       try {
-        const cleaned = modContent.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+        const cleaned = modContent
+          .replace(/```json\n?/g, "")
+          .replace(/```\n?/g, "")
+          .trim();
         modResult = JSON.parse(cleaned);
       } catch {
         modResult = { approved: true };
       }
-      
+
       if (!modResult.approved) {
-        return res.status(400).json({ 
-          valid: false, 
-          error: modResult.reason || "El contenido no fue aprobado por el sistema de moderación.",
+        return res.status(400).json({
+          valid: false,
+          error:
+            modResult.reason ||
+            "El contenido no fue aprobado por el sistema de moderación.",
           moderationFailed: true,
         });
       }
-      
+
       res.json({ valid: true });
     } catch (error) {
       console.error("Error in /api/validate-custom-plot:", error);
-      res.status(500).json({ valid: false, error: "Error al validar la trama personalizada" });
+      res
+        .status(500)
+        .json({
+          valid: false,
+          error: "Error al validar la trama personalizada",
+        });
     }
   });
 
   app.post("/api/start", async (req, res) => {
     try {
       const { spanishLevel, duration } = req.body as StartRequest;
-      
+
       const targetTurns = durationToTurns[duration];
       const remaining = await getTurnsRemaining();
-      
+
       if (remaining < targetTurns) {
-        return res.status(429).json({ 
+        return res.status(429).json({
           error: "limit_reached",
           message: `¡Este juego se ha vuelto muy popular! El límite mensual de turnos ha sido alcanzado. Solo quedan ${remaining} turnos disponibles este mes, pero una aventura "${duration}" necesita ${targetTurns} turnos. Por favor, intenta de nuevo el próximo mes o elige una aventura más corta.`,
           turnsRemaining: remaining,
-          turnsNeeded: targetTurns
+          turnsNeeded: targetTurns,
         });
       }
-      
+
       const session = await storage.createSession(spanishLevel, duration);
-      
+
       // Fetch first 3 plots from database instead of AI generation
       const dbPlots = await db
         .select({
@@ -516,32 +580,37 @@ Responde con JSON: { "approved": true/false, "reason": "explicación breve si no
           description: presetPlots.description,
         })
         .from(presetPlots)
-        .where(and(
-          eq(presetPlots.spanishLevel, spanishLevel),
-          eq(presetPlots.duration, duration)
-        ))
+        .where(
+          and(
+            eq(presetPlots.spanishLevel, spanishLevel),
+            eq(presetPlots.duration, duration),
+          ),
+        )
         .limit(3);
-      
-      const plots: PlotHook[] = dbPlots.map(p => ({
+
+      const plots: PlotHook[] = dbPlots.map((p) => ({
         id: String(p.id),
         titulo: p.title,
         descripcion: p.description,
       }));
-      
+
       // Fallback if no plots in DB
       if (plots.length === 0) {
-        plots.push(
-          { id: "fallback-1", titulo: "La Aventura Comienza", descripcion: "Un viaje emocionante pero peligroso te espera. Cada decisión cuenta." }
-        );
+        plots.push({
+          id: "fallback-1",
+          titulo: "La Aventura Comienza",
+          descripcion:
+            "Un viaje emocionante pero peligroso te espera. Cada decisión cuenta.",
+        });
       }
-      
+
       await storage.updateSession(session.sessionId, { plots });
-      
+
       const response: StartResponse = {
         sessionId: session.sessionId,
-        plots
+        plots,
       };
-      
+
       res.json(response);
     } catch (error) {
       console.error("Error in /api/start:", error);
@@ -551,13 +620,20 @@ Responde con JSON: { "approved": true/false, "reason": "explicación breve si no
 
   app.post("/api/select-plot", async (req, res) => {
     try {
-      const { sessionId, plotId, spanishLevel, duration, customTitle, customDescription } = req.body as SelectPlotRequest;
-      
+      const {
+        sessionId,
+        plotId,
+        spanishLevel,
+        duration,
+        customTitle,
+        customDescription,
+      } = req.body as SelectPlotRequest;
+
       const session = await storage.getSession(sessionId);
       if (!session) {
         return res.status(404).json({ error: "Sesión no encontrada" });
       }
-      
+
       // Handle custom plots
       let selectedPlot: PlotHook;
       if (plotId === "custom" && customTitle && customDescription) {
@@ -567,21 +643,21 @@ Responde con JSON: { "approved": true/false, "reason": "explicación breve si no
           descripcion: customDescription,
         };
       } else {
-        const foundPlot = session.plots?.find(p => p.id === plotId);
+        const foundPlot = session.plots?.find((p) => p.id === plotId);
         if (!foundPlot) {
           return res.status(400).json({ error: "Trama no encontrada" });
         }
         selectedPlot = foundPlot;
       }
-      
+
       const targetTurns = durationToTurns[duration];
-      
+
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
-          { 
-            role: "user", 
+          {
+            role: "user",
             content: `Comienza una nueva aventura con la siguiente configuración:
             
 NIVEL DE ESPAÑOL: ${spanishLevel}
@@ -597,15 +673,15 @@ ESTADO INICIAL DEL JUGADOR:
 
 Este es el turno 1 de ${targetTurns}. El progreso debe ser 0.0.
 Genera la escena inicial que presenta el escenario, el peligro potencial, y ofrece las primeras opciones al jugador.
-Indica el nivel de peligro inicial de la situación.` 
-          }
+Indica el nivel de peligro inicial de la situación.`,
+          },
         ],
         max_completion_tokens: 2048,
       });
-      
+
       const content = completion.choices[0]?.message?.content || "";
       const aiResponse = parseAIResponse(content);
-      
+
       const gameState: GameState = {
         sessionId,
         spanishLevel,
@@ -617,17 +693,19 @@ Indica el nivel de peligro inicial de la situación.`
         plot: selectedPlot,
         inventory: { items: [], pistas: [] },
         resumenMemoria: aiResponse.resumen_memoria,
-        history: [{
-          turnNumber: 1,
-          userInput: `Elegir: ${selectedPlot.titulo}`,
-          inputMode: "Acción" as const,
-          narracion: aiResponse.narracion,
-          opciones: aiResponse.opciones,
-          pistaProfesor: aiResponse.pista_profesor || "",
-          timestamp: Date.now(),
-          consecuencia: aiResponse.consecuencia,
-          peligro: aiResponse.peligro,
-        }],
+        history: [
+          {
+            turnNumber: 1,
+            userInput: `Elegir: ${selectedPlot.titulo}`,
+            inputMode: "Acción" as const,
+            narracion: aiResponse.narracion,
+            opciones: aiResponse.opciones,
+            pistaProfesor: aiResponse.pista_profesor || "",
+            timestamp: Date.now(),
+            consecuencia: aiResponse.consecuencia,
+            peligro: aiResponse.peligro,
+          },
+        ],
         currentOptions: aiResponse.opciones,
         permitirTextoLibre: aiResponse.permitir_texto_libre,
         permitirPreguntas: aiResponse.permitir_preguntas,
@@ -641,11 +719,11 @@ Indica el nivel de peligro inicial de la situación.`
         currentPeligro: aiResponse.peligro,
         currentConsecuencia: aiResponse.consecuencia,
       };
-      
+
       await storage.updateSession(sessionId, { gameState });
-      
+
       await incrementTurnCount(1);
-      
+
       const response: SelectPlotResponse = { gameState };
       res.json(response);
     } catch (error) {
@@ -656,62 +734,77 @@ Indica el nivel de peligro inicial de la situación.`
 
   app.post("/api/turn", async (req, res) => {
     try {
-      const { sessionId, mode, userInput, selectedOptionId, state, recentHistory } = req.body as TurnRequest;
-      
+      const {
+        sessionId,
+        mode,
+        userInput,
+        selectedOptionId,
+        state,
+        recentHistory,
+      } = req.body as TurnRequest;
+
       // PII validation for user input
       if (userInput) {
         const piiResult = validateNoPII(userInput);
         if (!piiResult.isValid) {
-          return res.status(400).json({ 
+          return res.status(400).json({
             error: "pii_detected",
             message: getPIIErrorMessage(piiResult),
           });
         }
       }
-      
+
       if (!(await canPlayTurns(1))) {
-        return res.status(429).json({ 
+        return res.status(429).json({
           error: "limit_reached",
-          message: "¡Este juego se ha vuelto muy popular! El límite mensual de turnos ha sido alcanzado. Por favor, intenta de nuevo el próximo mes. ¡Gracias por jugar!"
+          message:
+            "¡Este juego se ha vuelto muy popular! El límite mensual de turnos ha sido alcanzado. Por favor, intenta de nuevo el próximo mes. ¡Gracias por jugar!",
         });
       }
-      
+
       const session = await storage.getSession(sessionId);
       if (!session) {
         return res.status(404).json({ error: "Sesión no encontrada" });
       }
-      
+
       const playerAction = userInput || `Opción ${selectedOptionId}`;
-      
-      const historyContext = recentHistory.map(turn => 
-        `Turno ${turn.turnNumber}:\nJugador (${turn.inputMode}): ${turn.userInput}\nNarrador: ${turn.narracion}${turn.consecuencia ? `\nConsecuencia: ${turn.consecuencia}` : ""}`
-      ).join("\n\n");
-      
-      const inventoryStr = state.inventory.items.length > 0 
-        ? `Inventario actual: ${state.inventory.items.join(", ")}`
-        : "Inventario vacío";
-      
-      const estadoStr = state.estadoAfectos?.length > 0
-        ? `Estados de afecto: ${state.estadoAfectos.join(", ")}`
-        : "Sin estados de afecto";
-        
-      const banderasStr = state.banderas?.length > 0
-        ? `Banderas activas: ${state.banderas.join(", ")}`
-        : "Sin banderas";
-      
+
+      const historyContext = recentHistory
+        .map(
+          (turn) =>
+            `Turno ${turn.turnNumber}:\nJugador (${turn.inputMode}): ${turn.userInput}\nNarrador: ${turn.narracion}${turn.consecuencia ? `\nConsecuencia: ${turn.consecuencia}` : ""}`,
+        )
+        .join("\n\n");
+
+      const inventoryStr =
+        state.inventory.items.length > 0
+          ? `Inventario actual: ${state.inventory.items.join(", ")}`
+          : "Inventario vacío";
+
+      const estadoStr =
+        state.estadoAfectos?.length > 0
+          ? `Estados de afecto: ${state.estadoAfectos.join(", ")}`
+          : "Sin estados de afecto";
+
+      const banderasStr =
+        state.banderas?.length > 0
+          ? `Banderas activas: ${state.banderas.join(", ")}`
+          : "Sin banderas";
+
       const isNearEnd = state.turnIndex >= state.targetTurns - 3;
       const isAtEnd = state.turnIndex >= state.targetTurns;
-      
+
       let progressGuidance = "";
       if (isAtEnd) {
-        progressGuidance = "Este es el turno FINAL. Debes concluir la historia. Si el jugador ha tenido éxito, final=true. Si ha fracasado, game_over=true.";
+        progressGuidance =
+          "Este es el turno FINAL. Debes concluir la historia. Si el jugador ha tenido éxito, final=true. Si ha fracasado, game_over=true.";
       } else if (isNearEnd) {
         progressGuidance = `Estamos cerca del final (turno ${state.turnIndex + 1} de ${state.targetTurns}). Lleva la historia hacia su clímax.`;
       } else {
         const expectedProgress = (state.turnIndex + 1) / state.targetTurns;
         progressGuidance = `Turno ${state.turnIndex + 1} de ${state.targetTurns}. Progreso esperado: ~${expectedProgress.toFixed(2)}.`;
       }
-      
+
       if (mode === "Pregunta") {
         const preguntaPrompt = `Eres un profesor de español amable. El estudiante está jugando una aventura de texto en español (nivel ${state.spanishLevel}) y tiene una pregunta.
 
@@ -730,30 +823,30 @@ Responde SOLO con el texto de tu respuesta, sin formato JSON.`;
 
         const preguntaCompletion = await openai.chat.completions.create({
           model: "gpt-4o",
-          messages: [
-            { role: "user", content: preguntaPrompt }
-          ],
+          messages: [{ role: "user", content: preguntaPrompt }],
           max_completion_tokens: 512,
         });
-        
-        const respuesta = preguntaCompletion.choices[0]?.message?.content || "No pude entender tu pregunta. ¿Podrías reformularla?";
-        
+
+        const respuesta =
+          preguntaCompletion.choices[0]?.message?.content ||
+          "No pude entender tu pregunta. ¿Podrías reformularla?";
+
         const preguntaLearning = `Pregunta: "${playerAction}" → ${respuesta}`;
         const dbState = session.gameState!;
         const updatedResumenAprendizajes = mergeLearningSummaries(
           dbState.resumenAprendizajes,
           undefined,
           undefined,
-          preguntaLearning
+          preguntaLearning,
         );
-        
-        await storage.updateSession(sessionId, { 
+
+        await storage.updateSession(sessionId, {
           gameState: {
             ...dbState,
             resumenAprendizajes: updatedResumenAprendizajes,
-          }
+          },
         });
-        
+
         const response: TurnResponse = {
           aiResponse: {
             narracion: respuesta,
@@ -771,7 +864,7 @@ Responde SOLO con el texto de tu respuesta, sin formato JSON.`;
           gameEnded: false,
           isPreguntaResponse: true,
         };
-        
+
         return res.json(response);
       }
 
@@ -818,8 +911,8 @@ VERIFICA: ¿Tu respuesta refleja consecuencias realistas?`;
         model: "gpt-4o",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
-          { 
-            role: "user", 
+          {
+            role: "user",
             content: `CONTEXTO DEL JUEGO:
 Nivel de español: ${state.spanishLevel}
 Trama: "${state.plot.titulo}"
@@ -830,17 +923,21 @@ HISTORIAL RECIENTE:
 ${historyContext || "Este es el primer turno del jugador."}
 
 ACCIÓN ACTUAL:
-${turnMessage}` 
-          }
+${turnMessage}`,
+          },
         ],
         max_completion_tokens: 2048,
       });
-      
+
       const content = completion.choices[0]?.message?.content || "";
       const aiResponse = parseAIResponse(content);
-      
-      const gameEnded = aiResponse.game_over || aiResponse.final || aiResponse.estado.progreso >= 1.0 || state.turnIndex >= state.targetTurns;
-      
+
+      const gameEnded =
+        aiResponse.game_over ||
+        aiResponse.final ||
+        aiResponse.estado.progreso >= 1.0 ||
+        state.turnIndex >= state.targetTurns;
+
       let grammarFeedback: string | undefined;
       let grammarCorrection: string | undefined;
       if (userInput && userInput.trim().length > 0 && !selectedOptionId) {
@@ -864,59 +961,77 @@ Responde SOLO con el texto de tu retroalimentación.`;
             messages: [{ role: "user", content: grammarPrompt }],
             max_completion_tokens: 256,
           });
-          
-          grammarFeedback = grammarCompletion.choices[0]?.message?.content || undefined;
-          
-          if (grammarFeedback && !grammarFeedback.toLowerCase().includes("correcto") && 
-              !grammarFeedback.toLowerCase().includes("bien escrito") &&
-              !grammarFeedback.toLowerCase().includes("muy bien")) {
+
+          grammarFeedback =
+            grammarCompletion.choices[0]?.message?.content || undefined;
+
+          if (
+            grammarFeedback &&
+            !grammarFeedback.toLowerCase().includes("correcto") &&
+            !grammarFeedback.toLowerCase().includes("bien escrito") &&
+            !grammarFeedback.toLowerCase().includes("muy bien")
+          ) {
             grammarCorrection = `Corrección: "${userInput}" → ${grammarFeedback}`;
           }
         } catch (grammarError) {
           console.error("Error getting grammar feedback:", grammarError);
         }
       }
-      
+
       await incrementTurnCount(1);
-      
+
       // Update game state in database - use session.gameState from DB as authoritative source
       const dbState = session.gameState!;
-      
+
       let newSalud = dbState.salud ?? 100;
       if (aiResponse.cambio_estado?.salud_delta) {
-        newSalud = Math.max(0, Math.min(100, newSalud + aiResponse.cambio_estado.salud_delta));
+        newSalud = Math.max(
+          0,
+          Math.min(100, newSalud + aiResponse.cambio_estado.salud_delta),
+        );
       }
-      
+
       let newEstadoAfectos = [...(dbState.estadoAfectos || [])];
       const cambioEstado = aiResponse.cambio_estado;
       if (cambioEstado?.estado_afectos_agregar) {
-        newEstadoAfectos = Array.from(new Set([...newEstadoAfectos, ...cambioEstado.estado_afectos_agregar]));
+        newEstadoAfectos = Array.from(
+          new Set([
+            ...newEstadoAfectos,
+            ...cambioEstado.estado_afectos_agregar,
+          ]),
+        );
       }
       if (cambioEstado?.estado_afectos_quitar) {
         newEstadoAfectos = newEstadoAfectos.filter(
-          e => !cambioEstado.estado_afectos_quitar?.includes(e)
+          (e) => !cambioEstado.estado_afectos_quitar?.includes(e),
         );
       }
-      
+
       let newBanderas = [...(dbState.banderas || [])];
       if (cambioEstado?.banderas_agregar) {
-        newBanderas = Array.from(new Set([...newBanderas, ...cambioEstado.banderas_agregar]));
+        newBanderas = Array.from(
+          new Set([...newBanderas, ...cambioEstado.banderas_agregar]),
+        );
       }
       if (cambioEstado?.banderas_quitar) {
         newBanderas = newBanderas.filter(
-          b => !cambioEstado.banderas_quitar?.includes(b)
+          (b) => !cambioEstado.banderas_quitar?.includes(b),
         );
       }
-      
+
       let newItems = [...(dbState.inventory?.items || [])];
       const inventarioChanges = aiResponse.inventario;
       if (inventarioChanges?.agregar) {
-        newItems = Array.from(new Set([...newItems, ...inventarioChanges.agregar]));
+        newItems = Array.from(
+          new Set([...newItems, ...inventarioChanges.agregar]),
+        );
       }
       if (inventarioChanges?.quitar) {
-        newItems = newItems.filter(item => !inventarioChanges.quitar?.includes(item));
+        newItems = newItems.filter(
+          (item) => !inventarioChanges.quitar?.includes(item),
+        );
       }
-      
+
       const newHistory = [
         ...(dbState.history || []),
         {
@@ -929,9 +1044,9 @@ Responde SOLO con el texto de tu retroalimentación.`;
           peligro: aiResponse.peligro,
           pistaProfesor: aiResponse.pista_profesor,
           timestamp: Date.now(),
-        }
+        },
       ];
-      
+
       const updatedGameState = {
         ...dbState,
         sessionId,
@@ -954,22 +1069,22 @@ Responde SOLO con el texto de tu retroalimentación.`;
         resumenAprendizajes: mergeLearningSummaries(
           dbState.resumenAprendizajes,
           aiResponse.resumen_aprendizajes,
-          grammarCorrection
+          grammarCorrection,
         ),
       };
-      
-      await storage.updateSession(sessionId, { 
+
+      await storage.updateSession(sessionId, {
         gameState: updatedGameState,
-        ended: gameEnded 
+        ended: gameEnded,
       });
-      
+
       const response: TurnResponse = {
         aiResponse,
         gameEnded,
         isPreguntaResponse: false,
         grammarFeedback,
       };
-      
+
       res.json(response);
     } catch (error) {
       console.error("Error in /api/turn:", error);
