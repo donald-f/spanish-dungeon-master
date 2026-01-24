@@ -7,13 +7,19 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Send,
   History,
   Lightbulb,
   Sword,
   HelpCircle,
   Trophy,
-  X,
   MessageCircle,
   PenTool,
   AlertTriangle,
@@ -44,10 +50,12 @@ interface GameChatProps {
   finalRazon?: string;
   resumenAprendizajes?: ResumenAprendizajes;
   preguntaRespuesta?: string | null;
+  preguntaQuestion?: string | null;
   onDismissPregunta?: () => void;
   grammarFeedback?: string | null;
   onDismissGrammarFeedback?: () => void;
   onSpeakNarration?: (text: string) => void;
+  pendingNarration?: string | null;
 }
 
 function DangerIndicator({ peligro }: { peligro?: Peligro }) {
@@ -181,14 +189,18 @@ export function GameChat({
   finalRazon,
   resumenAprendizajes,
   preguntaRespuesta,
+  preguntaQuestion,
   onDismissPregunta,
   grammarFeedback,
   onDismissGrammarFeedback,
   onSpeakNarration,
+  pendingNarration,
 }: GameChatProps) {
   const [textInput, setTextInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastSpokenRef = useRef<string>("");
+  const [showPreguntaModal, setShowPreguntaModal] = useState(false);
+  const [showGrammarModal, setShowGrammarModal] = useState(false);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -197,15 +209,44 @@ export function GameChat({
   }, [gameState.currentNarracion]);
 
   useEffect(() => {
+    if (preguntaRespuesta) {
+      setShowPreguntaModal(true);
+    }
+  }, [preguntaRespuesta]);
+
+  useEffect(() => {
+    if (grammarFeedback) {
+      setShowGrammarModal(true);
+    }
+  }, [grammarFeedback]);
+
+  useEffect(() => {
     if (
       onSpeakNarration &&
       gameState.currentNarracion &&
-      gameState.currentNarracion !== lastSpokenRef.current
+      gameState.currentNarracion !== lastSpokenRef.current &&
+      !showGrammarModal &&
+      !grammarFeedback
     ) {
       lastSpokenRef.current = gameState.currentNarracion;
       onSpeakNarration(gameState.currentNarracion);
     }
-  }, [gameState.currentNarracion, onSpeakNarration]);
+  }, [gameState.currentNarracion, onSpeakNarration, showGrammarModal, grammarFeedback]);
+
+  const handleClosePreguntaModal = () => {
+    setShowPreguntaModal(false);
+    onModeChange("Acción");
+    onDismissPregunta?.();
+  };
+
+  const handleCloseGrammarModal = () => {
+    setShowGrammarModal(false);
+    onDismissGrammarFeedback?.();
+    if (onSpeakNarration && pendingNarration) {
+      lastSpokenRef.current = pendingNarration;
+      onSpeakNarration(pendingNarration);
+    }
+  };
 
   const handleOptionClick = (option: GameOption) => {
     if (!isLoading && !gameEnded) {
@@ -306,59 +347,6 @@ export function GameChat({
             {gameState.currentNarracion}
           </div>
 
-          {preguntaRespuesta && (
-            <div
-              className="flex items-start gap-2 p-4 rounded-lg bg-primary/10 border border-primary/30"
-              data-testid="pregunta-respuesta"
-            >
-              <MessageCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium text-primary">
-                    Respuesta del Profesor
-                  </span>
-                  {onDismissPregunta && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={onDismissPregunta}
-                      data-testid="button-dismiss-pregunta"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-                <p className="text-sm">{preguntaRespuesta}</p>
-              </div>
-            </div>
-          )}
-
-          {grammarFeedback && (
-            <div
-              className="flex items-start gap-2 p-4 rounded-lg bg-green-500/10 border border-green-500/30"
-              data-testid="grammar-feedback"
-            >
-              <PenTool className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium text-green-600 dark:text-green-400">
-                    Corrección de Español
-                  </span>
-                  {onDismissGrammarFeedback && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={onDismissGrammarFeedback}
-                      data-testid="button-dismiss-grammar"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-                <p className="text-sm">{grammarFeedback}</p>
-              </div>
-            </div>
-          )}
 
           {isGameOver && (
             <div
@@ -496,6 +484,64 @@ export function GameChat({
           )}
         </CardContent>
       )}
+
+      <Dialog open={showPreguntaModal} onOpenChange={(open) => !open && handleClosePreguntaModal()}>
+        <DialogContent className="sm:max-w-md" data-testid="modal-pregunta">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 text-primary" />
+              Respuesta del Profesor
+            </DialogTitle>
+            <DialogDescription>
+              Pregunta sobre español
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {preguntaQuestion && (
+              <div className="bg-muted/50 rounded-lg p-3">
+                <p className="text-sm text-muted-foreground mb-1">Tu pregunta:</p>
+                <p className="font-medium">{preguntaQuestion}</p>
+              </div>
+            )}
+            <div className="bg-primary/10 rounded-lg p-4 border border-primary/30">
+              <p className="text-sm">{preguntaRespuesta}</p>
+            </div>
+            <Button
+              onClick={handleClosePreguntaModal}
+              className="w-full"
+              data-testid="button-close-pregunta-modal"
+            >
+              Continuar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showGrammarModal} onOpenChange={(open) => !open && handleCloseGrammarModal()}>
+        <DialogContent className="sm:max-w-md" data-testid="modal-grammar">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PenTool className="h-5 w-5 text-green-600 dark:text-green-400" />
+              Corrección de Español
+            </DialogTitle>
+            <DialogDescription>
+              Retroalimentación sobre tu texto
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-green-500/10 rounded-lg p-4 border border-green-500/30">
+              <p className="text-sm">{grammarFeedback}</p>
+            </div>
+            <Button
+              onClick={handleCloseGrammarModal}
+              className="w-full"
+              data-testid="button-close-grammar-modal"
+            >
+              Continuar con la Historia
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

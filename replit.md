@@ -8,8 +8,9 @@ A Spanish-only text-based adventure game where an AI acts as a dungeon master (D
 - **Adaptive Difficulty**: Vocabulary/grammar adapts to user-selected level (A2/B1/B2)
 - **Dynamic Options**: AI generates 2-4 response options per turn (full text displayed, no truncation)
 - **Free Text Input**: Players can type custom responses when allowed
-- **Grammar Feedback**: When typing free-text responses, players receive grammar/spelling feedback (ignoring punctuation and accents)
-- **Pregunta Mode**: Ask questions about Spanish without derailing the story (mode persists until manually changed)
+- **Grammar Feedback**: When typing free-text responses, players receive grammar/spelling feedback in a modal popup (ignoring punctuation and accents). TTS is delayed until modal closes.
+- **Pregunta Mode**: Ask questions about Spanish without derailing the story. Q&A appears in a modal popup, then auto-switches back to Acción mode.
+- **History Export**: Download full adventure history as text file when story ends
 - **Story Coherence**: AI strictly follows player's chosen actions without reinterpreting them
 - **Inventory System**: Track items and clues throughout the adventure
 - **Progress Tracking**: Story paces toward chosen duration (corta/media/larga)

@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Scroll, RotateCcw, Sun, Moon, AlertTriangle, Loader2, Backpack, History, Volume2, VolumeX } from "lucide-react";
+import { Scroll, RotateCcw, Sun, Moon, AlertTriangle, Loader2, Backpack, History, Volume2, VolumeX, Download } from "lucide-react";
 import type { GameState, SpanishLevel, Duration, PlotHook, InputMode, TurnEntry, ResumenAprendizajes, LearningEntry } from "@shared/schema";
 import { GameSetup } from "@/components/game/GameSetup";
 import { GameChat } from "@/components/game/GameChat";
@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTTS } from "@/hooks/use-tts";
 
 const SESSION_STORAGE_KEY = "aventura_session_id";
+const SESSION_ENDED_KEY = "aventura_session_ended";
 const DARK_MODE_KEY = "aventura_dark_mode";
 const TTS_MUTE_KEY = "aventura_tts_mute";
 
@@ -43,6 +44,8 @@ export default function Game() {
     return saved === "true";
   });
   const [grammarFeedback, setGrammarFeedback] = useState<string | null>(null);
+  const [pendingNarration, setPendingNarration] = useState<string | null>(null);
+  const [preguntaQuestion, setPreguntaQuestion] = useState<string | null>(null);
   const { speak, stop: stopTTS } = useTTS({ lang: "es-ES", rate: 0.9 });
   const [limitError, setLimitError] = useState<string | null>(null);
   const [isGameOver, setIsGameOver] = useState(false);
@@ -56,13 +59,28 @@ export default function Game() {
     localStorage.removeItem(SESSION_STORAGE_KEY);
   }, []);
 
+  const markSessionEnded = useCallback(() => {
+    localStorage.setItem(SESSION_ENDED_KEY, "true");
+  }, []);
+
+  const clearSessionEnded = useCallback(() => {
+    localStorage.removeItem(SESSION_ENDED_KEY);
+  }, []);
+
   const saveSession = useCallback((id: string) => {
     localStorage.setItem(SESSION_STORAGE_KEY, id);
-  }, []);
+    clearSessionEnded();
+  }, [clearSessionEnded]);
 
   useEffect(() => {
     const checkExistingSession = async () => {
       const savedSessionId = localStorage.getItem(SESSION_STORAGE_KEY);
+      const sessionEnded = localStorage.getItem(SESSION_ENDED_KEY);
+      
+      if (sessionEnded === "true") {
+        setPhase("setup");
+        return;
+      }
       
       if (!savedSessionId) {
         setPhase("setup");
@@ -247,7 +265,19 @@ export default function Game() {
       
       if (data.isPreguntaResponse) {
         setPreguntaRespuesta(data.aiResponse.narracion);
+        setPreguntaQuestion(userInput || null);
         setGrammarFeedback(null);
+        setPendingNarration(null);
+        
+        const preguntaTurnEntry: TurnEntry = {
+          turnNumber: gameState.turnIndex,
+          userInput: userInput || "",
+          inputMode: "Pregunta",
+          narracion: "",
+          opciones: [],
+          timestamp: Date.now(),
+          preguntaRespuesta: data.aiResponse.narracion,
+        };
         
         const newLearningEntry: LearningEntry = {
           tipo: "pregunta",
@@ -256,6 +286,7 @@ export default function Game() {
         };
         setGameState({
           ...gameState,
+          history: [...gameState.history, preguntaTurnEntry],
           learningLog: [...(gameState.learningLog || []), newLearningEntry],
         });
         return;
@@ -276,6 +307,7 @@ export default function Game() {
         timestamp: Date.now(),
         consecuencia: data.aiResponse.consecuencia,
         peligro: data.aiResponse.peligro,
+        grammarFeedback: data.grammarFeedback,
       };
       
       const newInventory = { ...gameState.inventory };
@@ -361,11 +393,14 @@ export default function Game() {
       });
       
       setPreguntaRespuesta(null);
+      setPreguntaQuestion(null);
       
       if (data.grammarFeedback) {
         setGrammarFeedback(data.grammarFeedback);
+        setPendingNarration(data.aiResponse.narracion);
       } else {
         setGrammarFeedback(null);
+        setPendingNarration(null);
       }
       
       if (isGameOverNow) {
@@ -373,14 +408,17 @@ export default function Game() {
         setGameOverRazon(data.aiResponse.game_over_razon || (newSalud <= 0 ? "Tu salud llegó a cero." : undefined));
         setPhase("ended");
         clearSession();
+        markSessionEnded();
       } else if (isFinalNow) {
         setIsFinal(true);
         setFinalRazon(data.aiResponse.final_razon);
         setPhase("ended");
         clearSession();
+        markSessionEnded();
       } else if (data.gameEnded) {
         setPhase("ended");
         clearSession();
+        markSessionEnded();
       }
       
       if (data.aiResponse.resumen_aprendizajes) {
@@ -395,10 +433,11 @@ export default function Game() {
     } finally {
       setIsLoading(false);
     }
-  }, [gameState, sessionId, inputMode, toast, clearSession]);
+  }, [gameState, sessionId, inputMode, toast, clearSession, markSessionEnded]);
 
   const handleNewGame = useCallback(() => {
     clearSession();
+    clearSessionEnded();
     setPhase("setup");
     setGameState(null);
     setPlots([]);
@@ -411,7 +450,107 @@ export default function Game() {
     setGameOverRazon(undefined);
     setFinalRazon(undefined);
     setResumenAprendizajes(undefined);
-  }, [clearSession]);
+    setPreguntaRespuesta(null);
+    setPreguntaQuestion(null);
+    setGrammarFeedback(null);
+    setPendingNarration(null);
+  }, [clearSession, clearSessionEnded]);
+
+  const handleExportPDF = useCallback(() => {
+    if (!gameState) return;
+    
+    let pdfContent = `AVENTURA EN ESPAÑOL\n`;
+    pdfContent += `${"=".repeat(50)}\n\n`;
+    pdfContent += `Nivel: ${gameState.spanishLevel}\n`;
+    pdfContent += `Duración: ${gameState.duration}\n`;
+    pdfContent += `Trama: ${gameState.plot.titulo}\n`;
+    pdfContent += `${gameState.plot.descripcion}\n\n`;
+    pdfContent += `${"=".repeat(50)}\n`;
+    pdfContent += `HISTORIAL DE LA AVENTURA\n`;
+    pdfContent += `${"=".repeat(50)}\n\n`;
+    
+    for (const turn of gameState.history) {
+      pdfContent += `--- Turno ${turn.turnNumber} (${turn.inputMode}) ---\n`;
+      pdfContent += `Tu acción: ${turn.userInput}\n\n`;
+      
+      if (turn.preguntaRespuesta) {
+        pdfContent += `Respuesta del Profesor: ${turn.preguntaRespuesta}\n\n`;
+      }
+      
+      if (turn.grammarFeedback) {
+        pdfContent += `Corrección de Español: ${turn.grammarFeedback}\n\n`;
+      }
+      
+      if (turn.narracion) {
+        pdfContent += `Narración:\n${turn.narracion}\n\n`;
+      }
+      
+      if (turn.pistaProfesor) {
+        pdfContent += `Pista del Profesor: ${turn.pistaProfesor}\n\n`;
+      }
+      
+      pdfContent += "\n";
+    }
+    
+    if (resumenAprendizajes) {
+      pdfContent += `${"=".repeat(50)}\n`;
+      pdfContent += `RESUMEN DE APRENDIZAJES\n`;
+      pdfContent += `${"=".repeat(50)}\n\n`;
+      
+      if (resumenAprendizajes.puntos.length > 0) {
+        pdfContent += `Lo que aprendiste:\n`;
+        for (const punto of resumenAprendizajes.puntos) {
+          pdfContent += `  • ${punto}\n`;
+        }
+        pdfContent += "\n";
+      }
+      
+      if (resumenAprendizajes.errores_frecuentes.length > 0) {
+        pdfContent += `Errores para mejorar:\n`;
+        for (const error of resumenAprendizajes.errores_frecuentes) {
+          pdfContent += `  • ${error}\n`;
+        }
+        pdfContent += "\n";
+      }
+      
+      if (resumenAprendizajes.frases_utiles.length > 0) {
+        pdfContent += `Frases útiles:\n`;
+        for (const frase of resumenAprendizajes.frases_utiles) {
+          pdfContent += `  • ${frase}\n`;
+        }
+        pdfContent += "\n";
+      }
+    }
+    
+    if (isGameOver) {
+      pdfContent += `\n${"=".repeat(50)}\n`;
+      pdfContent += `FIN DEL JUEGO\n`;
+      if (gameOverRazon) {
+        pdfContent += `${gameOverRazon}\n`;
+      }
+    } else if (isFinal) {
+      pdfContent += `\n${"=".repeat(50)}\n`;
+      pdfContent += `¡AVENTURA COMPLETADA!\n`;
+      if (finalRazon) {
+        pdfContent += `${finalRazon}\n`;
+      }
+    }
+    
+    const blob = new Blob([pdfContent], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `aventura-${gameState.plot.titulo.replace(/\s+/g, "-").toLowerCase()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Historial exportado",
+      description: "Tu aventura ha sido descargada como archivo de texto.",
+    });
+  }, [gameState, resumenAprendizajes, isGameOver, gameOverRazon, isFinal, finalRazon, toast]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -518,7 +657,7 @@ export default function Game() {
         {(phase === "playing" || phase === "ended") && gameState && (
           <>
             <div className="max-w-4xl mx-auto">
-              <div className="flex gap-2 mb-4 justify-end">
+              <div className="flex gap-2 mb-4 justify-end flex-wrap">
                 <Button
                   variant="outline"
                   size="sm"
@@ -547,6 +686,17 @@ export default function Game() {
                     </span>
                   )}
                 </Button>
+                {phase === "ended" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportPDF}
+                    data-testid="button-export-history"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Exportar (TXT)
+                  </Button>
+                )}
               </div>
               
               <GameChat
@@ -563,10 +713,18 @@ export default function Game() {
                 finalRazon={finalRazon}
                 resumenAprendizajes={resumenAprendizajes}
                 preguntaRespuesta={preguntaRespuesta}
-                onDismissPregunta={() => setPreguntaRespuesta(null)}
+                preguntaQuestion={preguntaQuestion}
+                onDismissPregunta={() => {
+                  setPreguntaRespuesta(null);
+                  setPreguntaQuestion(null);
+                }}
                 grammarFeedback={grammarFeedback}
-                onDismissGrammarFeedback={() => setGrammarFeedback(null)}
+                onDismissGrammarFeedback={() => {
+                  setGrammarFeedback(null);
+                  setPendingNarration(null);
+                }}
                 onSpeakNarration={speakNarration}
+                pendingNarration={pendingNarration}
               />
             </div>
             

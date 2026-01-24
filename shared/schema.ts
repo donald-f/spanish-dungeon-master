@@ -146,6 +146,8 @@ export const turnEntrySchema = z.object({
   timestamp: z.number(),
   consecuencia: z.string().optional(),
   peligro: peligroSchema.optional(),
+  grammarFeedback: z.string().optional(),
+  preguntaRespuesta: z.string().optional(),
 });
 export type TurnEntry = z.infer<typeof turnEntrySchema>;
 

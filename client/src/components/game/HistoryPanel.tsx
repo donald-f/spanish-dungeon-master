@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Lightbulb } from "lucide-react";
+import { ChevronLeft, ChevronRight, Lightbulb, MessageCircle, PenTool } from "lucide-react";
 import type { TurnEntry } from "@shared/schema";
 
 interface HistoryPanelProps {
@@ -59,13 +59,37 @@ export function HistoryPanel({ history }: HistoryPanelProps) {
                 </div>
 
                 <div className="bg-muted/50 rounded-lg p-3">
-                  <p className="text-sm text-muted-foreground">Tu acción:</p>
+                  <p className="text-sm text-muted-foreground">
+                    {turn.inputMode === "Pregunta" ? "Tu pregunta:" : "Tu acción:"}
+                  </p>
                   <p className="font-medium">{turn.userInput}</p>
                 </div>
 
-                <div className="story-text leading-relaxed whitespace-pre-wrap">
-                  {turn.narracion}
-                </div>
+                {turn.preguntaRespuesta && (
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/10 border border-primary/30">
+                    <MessageCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-primary mb-1">Respuesta del Profesor</p>
+                      <p className="text-sm">{turn.preguntaRespuesta}</p>
+                    </div>
+                  </div>
+                )}
+
+                {turn.grammarFeedback && (
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+                    <PenTool className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-green-600 dark:text-green-400 mb-1">Corrección de Español</p>
+                      <p className="text-sm">{turn.grammarFeedback}</p>
+                    </div>
+                  </div>
+                )}
+
+                {turn.narracion && (
+                  <div className="story-text leading-relaxed whitespace-pre-wrap">
+                    {turn.narracion}
+                  </div>
+                )}
 
                 {turn.pistaProfesor && (
                   <div className="flex items-start gap-2 p-3 rounded-lg bg-accent/20 border border-accent/30">

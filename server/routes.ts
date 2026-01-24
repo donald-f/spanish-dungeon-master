@@ -142,7 +142,11 @@ Cuando game_over=true:
 - opciones debe estar vacío []
 - permitir_texto_libre = false
 - Narra la muerte/fracaso de forma dramática pero justa
-- SIEMPRE incluye resumen_aprendizajes con lecciones de español aprendidas
+- SIEMPRE incluye resumen_aprendizajes con SOLO lecciones de ESPAÑOL:
+  - puntos: vocabulario nuevo, expresiones aprendidas, estructuras gramaticales
+  - errores_frecuentes: errores de gramática/ortografía del jugador
+  - frases_utiles: frases en español útiles de la aventura
+  - NO incluir resúmenes de la historia o logros del juego
 
 ═══════════════════════════════════════
 CUÁNDO USAR FINAL (VICTORIA)
@@ -155,7 +159,11 @@ CUÁNDO USAR FINAL (VICTORIA)
 Cuando final=true:
 - opciones debe estar vacío []
 - Narra el final victorioso
-- SIEMPRE incluye resumen_aprendizajes con lecciones reales de la partida
+- SIEMPRE incluye resumen_aprendizajes con SOLO lecciones de ESPAÑOL:
+  - puntos: vocabulario nuevo, expresiones aprendidas, estructuras gramaticales
+  - errores_frecuentes: errores de gramática/ortografía del jugador
+  - frases_utiles: frases en español útiles de la aventura
+  - NO incluir resúmenes de la historia o logros del juego
 
 ═══════════════════════════════════════
 ARMAS Y COMBATE
