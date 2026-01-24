@@ -12,18 +12,17 @@ export type PIIType = 'email' | 'phone' | 'ssn' | 'contact_pattern';
 // Email regex - matches common email patterns
 const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/gi;
 
-// Phone number patterns - US and international formats
+// Phone number patterns - US and international formats (more strict to avoid false positives)
 const PHONE_PATTERNS = [
-  // US formats: (555) 123-4567, 555-123-4567, 555.123.4567, 5551234567
-  /(?:\+?1[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}/g,
+  // US formats with explicit separators: (555) 123-4567, 555-123-4567, 555.123.4567
+  /(?:\+?1[-.\s])?\([0-9]{3}\)[-.\s][0-9]{3}[-.\s][0-9]{4}/g,
+  /(?:\+?1[-.\s])?[0-9]{3}[-.\s][0-9]{3}[-.\s][0-9]{4}/g,
   // International with + prefix: +34 612 345 678
-  /\+[0-9]{1,3}[-.\s]?[0-9]{2,4}[-.\s]?[0-9]{3,4}[-.\s]?[0-9]{3,4}/g,
-  // Generic: sequences of 10+ digits possibly separated by common chars
-  /(?<!\d)[0-9]{3}[-.\s]?[0-9]{3,4}[-.\s]?[0-9]{4}(?!\d)/g,
+  /\+[0-9]{1,3}[\s-][0-9]{2,4}[\s-][0-9]{3,4}[\s-][0-9]{3,4}/g,
 ];
 
-// SSN patterns: 123-45-6789, 123 45 6789
-const SSN_REGEX = /\b[0-9]{3}[-\s]?[0-9]{2}[-\s]?[0-9]{4}\b/g;
+// SSN patterns: 123-45-6789, 123 45 6789 (requires explicit separators)
+const SSN_REGEX = /\b[0-9]{3}[-\s][0-9]{2}[-\s][0-9]{4}\b/g;
 
 // Contact-me patterns with digits (trying to share contact info)
 const CONTACT_PATTERNS = [
@@ -35,10 +34,11 @@ const CONTACT_PATTERNS = [
   /(?:add|agregar|agrégame)[\s:]*[a-zA-Z]*[\s:]*[\d]{5,}/gi,
 ];
 
-// Instagram/social handles that look like they're sharing contact
+// Instagram/social handles that look like they're sharing contact (only match explicit sharing patterns)
 const SOCIAL_CONTACT_PATTERNS = [
-  /@[a-zA-Z0-9._]{3,30}(?:\s|$)/g, // @username patterns
-  /(?:instagram|insta|ig|twitter|x|facebook|fb|snap|snapchat|tiktok|discord)[\s:@]*[a-zA-Z0-9._]{3,30}/gi,
+  // Only match @username when preceded by "find me" or "contact" style text
+  /(?:find|encuentra|follow|sígueme|contact|add)[\s:]*@[a-zA-Z0-9._]{3,30}/gi,
+  /(?:instagram|insta|twitter|facebook|snap|snapchat|tiktok|discord)[\s:@]+[a-zA-Z0-9._]{3,30}/gi,
 ];
 
 function detectEmails(text: string): string[] {

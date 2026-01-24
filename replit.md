@@ -43,29 +43,43 @@ client/
 │   │   └── game/
 │   │       ├── GameSetup.tsx     # Level/duration selection
 │   │       ├── GameChat.tsx      # Main chat interface with health/danger
-│   │       ├── InventoryPanel.tsx # Items and game state
-│   │       └── HistoryPanel.tsx   # Turn history with pagination
+│   │       ├── InventoryPanel.tsx # Items and game state (Sheet drawer)
+│   │       ├── HistoryPanel.tsx   # Turn history with pagination (Sheet drawer)
+│   │       └── PlotSelection.tsx  # Plot selection with pagination and custom plot creation
 │   └── App.tsx
 server/
-├── routes.ts                 # API endpoints (/api/start, /api/turn, /api/select-plot, /api/usage, /api/session/:id)
+├── routes.ts                 # API endpoints
 ├── storage.ts                # PostgreSQL session storage with DatabaseStorage class
 ├── usageTracker.ts           # Monthly turn limit tracking (1600 turns = ~$40)
+├── seedPlots.ts              # Script to seed 990 preset plots
 ├── db.ts                     # Database connection setup
 └── index.ts
 shared/
-└── schema.ts                 # TypeScript types, Zod schemas, and Drizzle table definitions
+├── schema.ts                 # TypeScript types, Zod schemas, and Drizzle table definitions
+└── piiValidation.ts          # PII detection utility (email, phone, SSN, contact patterns)
 ```
 
 ## API Endpoints
 
 ### POST /api/start
-Initializes a new game session and generates 3 plot hooks.
+Initializes a new game session and fetches 3 preset plot hooks from the database.
 - Body: `{ spanishLevel: "A2"|"B1"|"B2", duration: "corta"|"media"|"larga" }`
 - Response: `{ sessionId: string, plots: PlotHook[] }`
 
+### GET /api/plots
+Fetches paginated preset plots from the database.
+- Query: `?level=A2|B1|B2&duration=corta|media|larga&offset=0&limit=3`
+- Response: `{ plots: PlotHook[], hasMore: boolean }`
+
+### POST /api/validate-custom-plot
+Validates a custom plot for PII and inappropriate content.
+- Body: `{ title: string, description: string }`
+- Response on success: `{ valid: true }`
+- Response on failure: `{ valid: false, error: string, piiDetected?: boolean, moderationFailed?: boolean }`
+
 ### POST /api/select-plot
-Selects a plot and starts the game with initial narration.
-- Body: `{ sessionId, plotId, spanishLevel, duration }`
+Selects a plot (preset or custom) and starts the game with initial narration.
+- Body: `{ sessionId, plotId, spanishLevel, duration, customTitle?, customDescription? }`
 - Response: `{ gameState: GameState }`
 
 ### POST /api/turn
@@ -85,9 +99,17 @@ Validates and retrieves an existing game session for resuming play.
 
 ## Game Flow
 1. **Setup**: Player selects Spanish level (A2/B1/B2) and duration (corta/media/larga)
-2. **Plot Selection**: AI generates 3 unique plot hooks, player chooses one
+2. **Plot Selection**: 
+   - 3 preset plots loaded from DB (990 total plots seeded)
+   - "Show more" button to load additional plots via pagination
+   - Option to create custom plot with PII validation and AI moderation
 3. **Playing**: Turn-based loop with narration, options, danger tracking, and health
+   - Chat-first layout with drawer-based panels for Inventory and History
 4. **Completion**: Story ends on victory (final=true), death (game_over=true), or max turns
+
+## User Preferences
+- **Dark Mode**: Persisted in localStorage (key: "aventura_dark_mode")
+- **Session Persistence**: Session ID cached in localStorage for resume capability
 
 ## AI Response Format (Extended)
 ```json
