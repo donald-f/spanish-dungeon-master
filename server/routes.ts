@@ -20,6 +20,7 @@ import { durationToTurns, aiResponseSchema, presetPlots } from "@shared/schema";
 import { canPlayTurns, incrementTurnCount, getTurnsRemaining, getUsageStats } from "./usageTracker";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
+import { validateNoPII, getPIIErrorMessage } from "@shared/piiValidation";
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -398,6 +399,89 @@ export async function registerRoutes(
     }
   });
 
+  // Validate custom plot - PII check first, then AI moderation
+  app.post("/api/validate-custom-plot", async (req, res) => {
+    try {
+      const { title, description } = req.body as { title: string; description: string };
+      
+      // Length validation
+      if (!title || title.length < 10 || title.length > 120) {
+        return res.status(400).json({ 
+          valid: false, 
+          error: "El título debe tener entre 10 y 120 caracteres." 
+        });
+      }
+      if (!description || description.length < 50 || description.length > 1500) {
+        return res.status(400).json({ 
+          valid: false, 
+          error: "La descripción debe tener entre 50 y 1500 caracteres." 
+        });
+      }
+      
+      // PII validation (regex-based)
+      const titlePII = validateNoPII(title);
+      const descPII = validateNoPII(description);
+      
+      if (!titlePII.isValid) {
+        return res.status(400).json({ 
+          valid: false, 
+          error: getPIIErrorMessage(titlePII),
+          piiDetected: true,
+        });
+      }
+      
+      if (!descPII.isValid) {
+        return res.status(400).json({ 
+          valid: false, 
+          error: getPIIErrorMessage(descPII),
+          piiDetected: true,
+        });
+      }
+      
+      // AI moderation check
+      const moderationPrompt = `Analiza el siguiente contenido para un juego de aventura en español. Verifica que:
+1. NO contenga información personal (nombres reales, direcciones, teléfonos, emails)
+2. NO contenga contenido inapropiado, violento extremo u ofensivo
+3. Sea apropiado para un juego de aventura educativo
+
+Título: "${title}"
+Descripción: "${description}"
+
+Responde con JSON: { "approved": true/false, "reason": "explicación breve si no aprobado" }`;
+
+      const moderation = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: "Eres un moderador de contenido para un juego educativo. Responde solo con JSON válido." },
+          { role: "user", content: moderationPrompt }
+        ],
+        max_completion_tokens: 200,
+      });
+      
+      const modContent = moderation.choices[0]?.message?.content || '{"approved": true}';
+      let modResult;
+      try {
+        const cleaned = modContent.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+        modResult = JSON.parse(cleaned);
+      } catch {
+        modResult = { approved: true };
+      }
+      
+      if (!modResult.approved) {
+        return res.status(400).json({ 
+          valid: false, 
+          error: modResult.reason || "El contenido no fue aprobado por el sistema de moderación.",
+          moderationFailed: true,
+        });
+      }
+      
+      res.json({ valid: true });
+    } catch (error) {
+      console.error("Error in /api/validate-custom-plot:", error);
+      res.status(500).json({ valid: false, error: "Error al validar la trama personalizada" });
+    }
+  });
+
   app.post("/api/start", async (req, res) => {
     try {
       const { spanishLevel, duration } = req.body as StartRequest;
@@ -416,46 +500,30 @@ export async function registerRoutes(
       
       const session = await storage.createSession(spanishLevel, duration);
       
-      const prompt = PLOT_GENERATION_PROMPT
-        .replace("{level}", spanishLevel)
-        .replace("{duration}", duration)
-        .replace("{turns}", String(targetTurns));
+      // Fetch first 3 plots from database instead of AI generation
+      const dbPlots = await db
+        .select({
+          id: presetPlots.id,
+          title: presetPlots.title,
+          description: presetPlots.description,
+        })
+        .from(presetPlots)
+        .where(and(
+          eq(presetPlots.spanishLevel, spanishLevel),
+          eq(presetPlots.duration, duration)
+        ))
+        .limit(3);
       
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          { role: "system", content: "Eres un escritor creativo que genera tramas para juegos de aventura en español con peligro real. Responde SOLO con JSON válido." },
-          { role: "user", content: prompt }
-        ],
-        max_completion_tokens: 1024,
-      });
-      
-      const content = completion.choices[0]?.message?.content || "";
-      const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      
-      let parsed;
-      try {
-        parsed = JSON.parse(cleaned);
-      } catch (parseError) {
-        console.error("Failed to parse AI response:", cleaned);
-        parsed = {
-          plots: [
-            { id: "1", titulo: "La Búsqueda del Tesoro Perdido", descripcion: "Descubres un mapa antiguo que lleva a un tesoro escondido en las montañas. Pero otros también lo buscan, y no dudarán en matarte por él." },
-            { id: "2", titulo: "El Misterio del Pueblo Abandonado", descripcion: "Un pueblo fantasma guarda secretos oscuros. Los lugareños desaparecieron hace años. ¿Correrás el mismo destino?" },
-            { id: "3", titulo: "El Viaje a las Estrellas", descripcion: "Eres seleccionado para una misión espacial. El espacio es implacable: un error puede ser tu último." }
-          ]
-        };
-      }
-      
-      const plots: PlotHook[] = (parsed.plots || []).map((p: any, index: number) => ({
-        id: p.id || String(index + 1),
-        titulo: p.titulo || `Aventura ${index + 1}`,
-        descripcion: p.descripcion || "Una emocionante aventura te espera."
+      const plots: PlotHook[] = dbPlots.map(p => ({
+        id: String(p.id),
+        titulo: p.title,
+        descripcion: p.description,
       }));
       
+      // Fallback if no plots in DB
       if (plots.length === 0) {
         plots.push(
-          { id: "1", titulo: "La Aventura Comienza", descripcion: "Un viaje emocionante pero peligroso te espera. Cada decisión cuenta." }
+          { id: "fallback-1", titulo: "La Aventura Comienza", descripcion: "Un viaje emocionante pero peligroso te espera. Cada decisión cuenta." }
         );
       }
       
@@ -570,6 +638,17 @@ Indica el nivel de peligro inicial de la situación.`
   app.post("/api/turn", async (req, res) => {
     try {
       const { sessionId, mode, userInput, selectedOptionId, state, recentHistory } = req.body as TurnRequest;
+      
+      // PII validation for user input
+      if (userInput) {
+        const piiResult = validateNoPII(userInput);
+        if (!piiResult.isValid) {
+          return res.status(400).json({ 
+            error: "pii_detected",
+            message: getPIIErrorMessage(piiResult),
+          });
+        }
+      }
       
       if (!(await canPlayTurns(1))) {
         return res.status(429).json({ 
