@@ -46,7 +46,7 @@ export default function Game() {
   const [grammarFeedback, setGrammarFeedback] = useState<string | null>(null);
   const [pendingNarration, setPendingNarration] = useState<string | null>(null);
   const [preguntaQuestion, setPreguntaQuestion] = useState<string | null>(null);
-  const { speak, stop: stopTTS } = useTTS({ lang: "es-ES", rate: 0.9 });
+  const { speak, stop: stopTTS, warmUp: warmUpTTS, isSpeaking: isTTSSpeaking, isReady: isTTSReady } = useTTS({ lang: "es-ES", rate: 0.9 });
   const [limitError, setLimitError] = useState<string | null>(null);
   const [isGameOver, setIsGameOver] = useState(false);
   const [gameOverRazon, setGameOverRazon] = useState<string | undefined>();
@@ -132,11 +132,16 @@ export default function Game() {
     }
   }, [isMuted, stopTTS]);
 
-  const speakNarration = useCallback((text: string) => {
-    if (!isMuted && text) {
+  const speakNarration = useCallback((text: string, forceSpeak = false) => {
+    if (forceSpeak || (!isMuted && text)) {
       speak(text);
     }
   }, [isMuted, speak]);
+
+  const handleManualSpeak = useCallback((text: string) => {
+    warmUpTTS();
+    speak(text);
+  }, [warmUpTTS, speak]);
 
   const handleStartGame = useCallback(async (level: SpanishLevel, duration: Duration) => {
     setIsLoading(true);
@@ -724,7 +729,10 @@ export default function Game() {
                   setPendingNarration(null);
                 }}
                 onSpeakNarration={speakNarration}
+                onReplayNarration={handleManualSpeak}
                 pendingNarration={pendingNarration}
+                isTTSSpeaking={isTTSSpeaking}
+                isTTSReady={isTTSReady}
               />
             </div>
             

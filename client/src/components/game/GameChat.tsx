@@ -28,6 +28,8 @@ import {
   Shield,
   Zap,
   BookOpen,
+  Volume2,
+  Loader2,
 } from "lucide-react";
 import type {
   GameState,
@@ -56,7 +58,10 @@ interface GameChatProps {
   grammarFeedback?: string | null;
   onDismissGrammarFeedback?: () => void;
   onSpeakNarration?: (text: string) => void;
+  onReplayNarration?: (text: string) => void;
   pendingNarration?: string | null;
+  isTTSSpeaking?: boolean;
+  isTTSReady?: boolean;
 }
 
 function DangerIndicator({ peligro }: { peligro?: Peligro }) {
@@ -195,7 +200,10 @@ export function GameChat({
   grammarFeedback,
   onDismissGrammarFeedback,
   onSpeakNarration,
+  onReplayNarration,
   pendingNarration,
+  isTTSSpeaking,
+  isTTSReady,
 }: GameChatProps) {
   const [textInput, setTextInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -409,8 +417,27 @@ export function GameChat({
                 </div>
               )}
 
-              <div className="story-text leading-relaxed whitespace-pre-wrap">
-                {gameState.currentNarracion}
+              <div className="relative">
+                <div className="story-text leading-relaxed whitespace-pre-wrap">
+                  {gameState.currentNarracion}
+                </div>
+                {onReplayNarration && gameState.currentNarracion && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-0 right-0 opacity-60 hover:opacity-100"
+                    onClick={() => onReplayNarration(gameState.currentNarracion)}
+                    disabled={isTTSSpeaking}
+                    title={isTTSSpeaking ? "Reproduciendo..." : "Escuchar narración"}
+                    data-testid="button-replay-tts"
+                  >
+                    {isTTSSpeaking ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Volume2 className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
               </div>
             </>
           )}
@@ -637,8 +664,27 @@ export function GameChat({
                 </p>
               </div>
             )}
-            <div className="story-text leading-relaxed whitespace-pre-wrap break-words bg-background p-4 rounded-lg border">
-              {gameState.currentNarracion}
+            <div className="relative">
+              <div className="story-text leading-relaxed whitespace-pre-wrap break-words bg-background p-4 rounded-lg border">
+                {gameState.currentNarracion}
+              </div>
+              {onReplayNarration && gameState.currentNarracion && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-2 right-2 opacity-60 hover:opacity-100"
+                  onClick={() => onReplayNarration(gameState.currentNarracion)}
+                  disabled={isTTSSpeaking}
+                  title={isTTSSpeaking ? "Reproduciendo..." : "Escuchar narración"}
+                  data-testid="button-replay-tts-mobile"
+                >
+                  {isTTSSpeaking ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Volume2 className="h-4 w-4" />
+                  )}
+                </Button>
+              )}
             </div>
             {gameState.currentPeligro && (
               <DangerIndicator peligro={gameState.currentPeligro} />
