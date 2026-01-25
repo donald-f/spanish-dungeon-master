@@ -1,7 +1,6 @@
 import { db } from "./db";
 import { presetPlots } from "@shared/schema";
 import { count } from "drizzle-orm";
-import { fileURLToPath } from "url";
 
 // Plot templates organized by theme categories
 const plotTemplates = [
@@ -743,18 +742,5 @@ export async function seedPlots() {
   return totalInserted;
 }
 
-// Run directly if called as script
-const isMainModule =
-  process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
-
-if (isMainModule) {
-  seedPlots()
-    .then((count) => {
-      console.log(`Done! Inserted ${count} plots.`);
-      process.exit(0);
-    })
-    .catch((err) => {
-      console.error("Seed error:", err);
-      process.exit(1);
-    });
-}
+// Note: Auto-seeding now happens on server startup via server/index.ts
+// The seedPlots() function is exported and called during app initialization
