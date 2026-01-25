@@ -92,6 +92,40 @@ COHERENCIA NARRATIVA (CRÍTICO)
 - Primero describe la consecuencia, luego la nueva situación
 
 ═══════════════════════════════════════
+USO CONTROLADO DE permitir_texto_libre
+═══════════════════════════════════════
+
+- permitir_texto_libre = true por defecto (la mayor parte del juego).
+- Puedes poner permitir_texto_libre = false SOLO en casos raros y justificados para “re-encarrilar” la historia.
+- Úsalo como herramienta de dirección, NO como castigo.
+
+CASOS PERMITIDOS (elige 1 como motivo implícito):
+1) El jugador intenta romper el juego repetidamente (spam, “hago cualquier cosa”, bucles absurdos).
+2) La acción del jugador contradice físicamente el estado (ej: “vuelo” sin magia, “tengo un rifle” sin haberlo conseguido) y ya se explicó antes.
+3) El jugador insiste 2+ turnos en ignorar el objetivo principal, impidiendo el avance (estancamiento).
+4) Necesitas una “escena de transición” para avanzar la trama (viaje, salto temporal, captura no letal, recuperación), y opciones guiadas son mejores.
+
+CUANDO permitir_texto_libre = false:
+- Proporciona 2-4 opciones muy claras y concretas.
+- Mantén permitir_preguntas = true (salvo game_over).
+- NO lo mantengas bloqueado más de 1 turno seguido a menos que el jugador siga rompiendo el juego.
+- Al siguiente turno, intenta volver a permitir_texto_libre = true si es razonable.
+
+═══════════════════════════════════════
+ESCALADA JUSTA (MUY IMPORTANTE)
+═══════════════════════════════════════
+
+- No conviertas errores sociales (provocar, insultar, presumir, hacer el ridículo) en MUERTE inmediata,
+  a menos que el jugador haya elegido violencia letal explícita o haya ignorado advertencias claras repetidas.
+- Usa una "escalera de escalada" para PNJs hostiles:
+  1) Advertencia verbal / intimidación
+  2) Amenaza directa + señal clara de peligro (arma mostrada, guardias alertas, etc.)
+  3) Consecuencia no letal (empujón, golpe, desarme, arresto, disparo de advertencia)
+  4) Violencia letal SOLO si el jugador insiste, ataca primero, o no hay alternativa creíble
+- Si el PNJ es impulsivo, puede saltarse pasos, pero AÚN así debe haber una señal clara de peligro
+  antes del daño letal (mirada, mano al arma, silencio, “última advertencia”, etc.).
+
+═══════════════════════════════════════
 FORMATO JSON REQUERIDO
 ═══════════════════════════════════════
 
@@ -112,7 +146,7 @@ FORMATO JSON REQUERIDO
     "tension": 0.0
   },
   "resumen_memoria": "Resumen actualizado de la historia",
-  
+
   "consecuencia": "Descripción breve de qué pasó por la acción del jugador",
   "peligro": {
     "nivel": "bajo|medio|alto",
@@ -212,7 +246,7 @@ Responde SOLO con JSON válido:
       "descripcion": "Descripción de 2-3 oraciones que presente el escenario y el conflicto inicial. Menciona sutilmente el peligro."
     },
     {
-      "id": "2", 
+      "id": "2",
       "titulo": "...",
       "descripcion": "..."
     },
@@ -246,6 +280,25 @@ function isImmediateDangerPlot(plot: {
   return dangerPatterns.some((re) => re.test(text));
 }
 
+function countRecentTextLock(banderas: string[] | undefined): number {
+  if (!banderas) return 0;
+  const match = banderas.find((b) => b.startsWith("texto_libre_lock_count:"));
+  if (!match) return 0;
+  const n = parseInt(match.split(":")[1] || "0", 10);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function setTextLockCount(banderas: string[], n: number): string[] {
+  const filtered = banderas.filter(
+    (b) => !b.startsWith("texto_libre_lock_count:"),
+  );
+
+  // Keep banderas cleaner: only store counter when > 0
+  if (n > 0) filtered.push(`texto_libre_lock_count:${n}`);
+
+  return filtered;
+}
+
 function parseAIResponse(content: string): AIResponse {
   const cleaned = content
     .replace(/```json\n?/g, "")
@@ -257,6 +310,10 @@ function parseAIResponse(content: string): AIResponse {
     parsed.opciones = [];
     parsed.permitir_texto_libre = false;
   } else {
+    if (parsed.permitir_texto_libre === undefined) {
+      parsed.permitir_texto_libre = true;
+    }
+
     if (!parsed.opciones || parsed.opciones.length < 2) {
       parsed.opciones = [
         { id: "A", texto: "Continuar explorando" },
@@ -666,15 +723,16 @@ Responde con JSON: { "approved": true/false, "reason": "explicación breve si no
         };
       } else {
         // Look up plot from database instead of session
-        const dbPlot = await db.select()
+        const dbPlot = await db
+          .select()
           .from(presetPlots)
           .where(eq(presetPlots.id, parseInt(plotId, 10)))
           .limit(1);
-        
+
         if (dbPlot.length === 0) {
           return res.status(400).json({ error: "Trama no encontrada" });
         }
-        
+
         selectedPlot = {
           id: dbPlot[0].id.toString(),
           titulo: dbPlot[0].title,
@@ -691,7 +749,7 @@ Responde con JSON: { "approved": true/false, "reason": "explicación breve si no
           {
             role: "user",
             content: `Comienza una nueva aventura con la siguiente configuración:
-            
+
 NIVEL DE ESPAÑOL: ${spanishLevel}
 DURACIÓN: ${duration} (${targetTurns} turnos)
 TRAMA SELECCIONADA: "${selectedPlot.titulo}"
@@ -722,7 +780,7 @@ Indica el nivel de peligro inicial de la situación.`,
 
       // Process starting items from AI response
       const startingItems = aiResponse.inventario?.agregar || [];
-      
+
       const gameState: GameState = {
         sessionId,
         spanishLevel,
@@ -846,7 +904,7 @@ Indica el nivel de peligro inicial de la situación.`,
         progressGuidance = `Turno ${state.turnIndex + 1} de ${state.targetTurns}. Progreso esperado: ~${expectedProgress.toFixed(2)}.`;
       }
 
-      const isEarlyGame = state.turnIndex < 3;
+      const isEarlyGame = state.turnIndex < 4;
       const immediateDangerPlot = isImmediateDangerPlot(state.plot);
       let earlyGameGuidance = "";
       if (isEarlyGame && !immediateDangerPlot) {
@@ -857,7 +915,10 @@ Indica el nivel de peligro inicial de la situación.`,
         - Varía la calidad: a veces algo muy útil, a veces mediocre, a veces casi inútil (pero con posible uso creativo).
         - No regales siempre el “mejor” objeto.
       - Si añades objetos, úsalo en inventario.agregar (y quita objetos solo si hay una razón clara).
-      - Aun con peligro bajo, las decisiones estúpidas pueden tener consecuencias, pero evita "muerte rápida" en estos primeros turnos salvo que el jugador se lo busque claramente.`;
+      - Aun con peligro bajo, las decisiones estúpidas pueden tener consecuencias, pero evita "muerte rápida" en estos primeros turnos salvo que el jugador se lo busque claramente.
+      - Si el jugador consiguió un objeto recientemente, crea una oportunidad razonable (no forzada) para que pueda usarlo pronto.
+      - Recompensa usos creativos con pequeñas ventajas (mejor posición, información, +salud, bajar peligro).
+      `;
       }
 
       if (mode === "Pregunta") {
@@ -935,6 +996,14 @@ ESTADO ACTUAL DEL JUGADOR:
 
 REGLA OBLIGATORIA: Aplica CONSECUENCIAS REALES a la acción.
 
+REGLA DE ESCALADA JUSTA:
+- Si la acción es principalmente SOCIAL (provocar, insultar, fanfarronear, humillar, mostrar un objeto),
+  NO saltes directamente a daño letal salvo que:
+  (a) el jugador ataque primero con intención letal, o
+  (b) ya hubo advertencias claras, o
+  (c) no existe alternativa creíble en la escena.
+- Prefiere: advertencia → amenaza → consecuencia no letal (empujón/desarme/arresto/disparo de advertencia) → letal.
+
 ANÁLISIS DE LA ACCIÓN:
 1. ¿Es esta acción peligrosa o estúpida dada la situación?
 2. ¿Hay enemigos hostiles que reaccionarán?
@@ -987,6 +1056,21 @@ ${turnMessage}`,
 
       const content = completion.choices[0]?.message?.content || "";
       const aiResponse = parseAIResponse(content);
+
+      // --- Controlled use of permitir_texto_libre (sparingly) ---
+      // Enforce: don't keep free text locked multiple turns in a row.
+      // If the AI tries to lock again consecutively, override back to true (keep options to steer).
+      const priorLockCount = countRecentTextLock(session.gameState?.banderas);
+      if (aiResponse.permitir_texto_libre === false && priorLockCount >= 1) {
+        aiResponse.permitir_texto_libre = true;
+
+        if (!aiResponse.opciones || aiResponse.opciones.length < 2) {
+          aiResponse.opciones = [
+            { id: "A", texto: "Volver al objetivo principal" },
+            { id: "B", texto: "Buscar una pista útil" },
+          ];
+        }
+      }
 
       const gameEnded =
         aiResponse.game_over ||
@@ -1073,6 +1157,17 @@ Responde SOLO con el texto de tu retroalimentación.`;
         newBanderas = newBanderas.filter(
           (b) => !cambioEstado.banderas_quitar?.includes(b),
         );
+      }
+
+      // Track consecutive text locks in banderas
+      const wasLocked = aiResponse.permitir_texto_libre === false;
+      const prevCount = countRecentTextLock(newBanderas);
+
+      if (wasLocked) {
+        newBanderas = setTextLockCount(newBanderas, prevCount + 1);
+      } else {
+        // reset when free text is allowed again
+        newBanderas = setTextLockCount(newBanderas, 0);
       }
 
       let newItems = [...(dbState.inventory?.items || [])];
