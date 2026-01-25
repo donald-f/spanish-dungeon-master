@@ -224,6 +224,28 @@ Responde SOLO con JSON válido:
   ]
 }`;
 
+function isImmediateDangerPlot(plot: {
+  titulo: string;
+  descripcion: string;
+}): boolean {
+  // Heuristic: treat plots that clearly start "in medias res" (attack, chase, trap, etc.) as immediate danger.
+  // This avoids slowing down stories that are meant to begin with chaos.
+  const text = `${plot.titulo} ${plot.descripcion}`.toLowerCase();
+
+  const dangerPatterns: RegExp[] = [
+    /peligro\s+inmediato/,
+    /en\s+medio\s+de\s+(una|un)\s+(batalla|incendio|asalto|ataque|emboscada)/,
+    /te\s+(atacan|atacaron|emboscan|emboscaron|persiguen|perseguían|secuestran|secuestraron)/,
+    /estás\s+(huyendo|escapando|acorralad[oa]|rodead[oa]|encerrad[oa])/,
+    /prisi[oó]n|c[aá]rcel|celda/,
+    /trampa|trampas/,
+    /(monstruo|bestia|demonio|asesino)\s+ya\s+est[aá]\s+aquí/,
+    /sangre|herid[oa]|mueres|muerte\s+inminente/,
+  ];
+
+  return dangerPatterns.some((re) => re.test(text));
+}
+
 function parseAIResponse(content: string): AIResponse {
   const cleaned = content
     .replace(/```json\n?/g, "")
@@ -545,12 +567,10 @@ Responde con JSON: { "approved": true/false, "reason": "explicación breve si no
       res.json({ valid: true });
     } catch (error) {
       console.error("Error in /api/validate-custom-plot:", error);
-      res
-        .status(500)
-        .json({
-          valid: false,
-          error: "Error al validar la trama personalizada",
-        });
+      res.status(500).json({
+        valid: false,
+        error: "Error al validar la trama personalizada",
+      });
     }
   });
 
@@ -805,6 +825,20 @@ Indica el nivel de peligro inicial de la situación.`,
         progressGuidance = `Turno ${state.turnIndex + 1} de ${state.targetTurns}. Progreso esperado: ~${expectedProgress.toFixed(2)}.`;
       }
 
+      const isEarlyGame = state.turnIndex < 3;
+      const immediateDangerPlot = isImmediateDangerPlot(state.plot);
+      let earlyGameGuidance = "";
+      if (isEarlyGame && !immediateDangerPlot) {
+        earlyGameGuidance = `INSTRUCCIONES ESPECIALES (RAMP-UP - primeros 2-3 turnos):
+      - Mantén el peligro BAJO o como máximo MEDIO. No empieces con combate letal ni una amenaza inminente.
+      - Estos turnos deben construir la trama de forma sutil: ambiente, NPCs, pistas, tensiones sociales, señales de lo que vendrá (sin decirlo explícitamente).
+      - Dale al jugador oportunidades naturales de conseguir herramientas/objetos/armas para su inventario.
+        - Varía la calidad: a veces algo muy útil, a veces mediocre, a veces casi inútil (pero con posible uso creativo).
+        - No regales siempre el “mejor” objeto.
+      - Si añades objetos, úsalo en inventario.agregar (y quita objetos solo si hay una razón clara).
+      - Aun con peligro bajo, las decisiones estúpidas pueden tener consecuencias, pero evita "muerte rápida" en estos primeros turnos salvo que el jugador se lo busque claramente.`;
+      }
+
       if (mode === "Pregunta") {
         const preguntaPrompt = `Eres un profesor de español amable. El estudiante está jugando una aventura de texto en español (nivel ${state.spanishLevel}) y tiene una pregunta.
 
@@ -917,6 +951,7 @@ VERIFICA: ¿Tu respuesta refleja consecuencias realistas?`;
 Nivel de español: ${state.spanishLevel}
 Trama: "${state.plot.titulo}"
 ${progressGuidance}
+${earlyGameGuidance}
 Resumen de la historia: ${state.resumenMemoria}
 
 HISTORIAL RECIENTE:
