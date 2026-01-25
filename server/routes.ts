@@ -516,6 +516,161 @@ export async function registerRoutes(
     }
   });
 
+  // Admin middleware for protected endpoints
+  const requireAdminKey = (req: any, res: any, next: any) => {
+    const adminKey = req.headers["x-admin-key"];
+    const expectedKey = process.env.ADMIN_SECRET;
+    
+    if (!expectedKey) {
+      return res.status(500).json({ error: "ADMIN_SECRET not configured" });
+    }
+    
+    if (!adminKey || adminKey !== expectedKey) {
+      return res.status(401).json({ error: "Unauthorized - Invalid admin key" });
+    }
+    
+    next();
+  };
+
+  // GET /api/plots/:plotId - Get a specific plot (protected)
+  app.get("/api/plots/:plotId", requireAdminKey, async (req, res) => {
+    try {
+      const plotId = parseInt(req.params.plotId, 10);
+      
+      if (isNaN(plotId)) {
+        return res.status(400).json({ error: "Invalid plot ID" });
+      }
+
+      const plot = await db
+        .select({
+          id: presetPlots.id,
+          title: presetPlots.title,
+          description: presetPlots.description,
+        })
+        .from(presetPlots)
+        .where(eq(presetPlots.id, plotId))
+        .limit(1);
+
+      if (plot.length === 0) {
+        return res.status(404).json({ error: "Plot not found" });
+      }
+
+      res.json({
+        id: String(plot[0].id),
+        titulo: plot[0].title,
+        descripcion: plot[0].description,
+      });
+    } catch (error) {
+      console.error("Error in GET /api/plots/:plotId:", error);
+      res.status(500).json({ error: "Error fetching plot" });
+    }
+  });
+
+  // POST /api/plots - Create a new plot (protected)
+  app.post("/api/plots", requireAdminKey, async (req, res) => {
+    try {
+      const { title, description } = req.body as { title: string; description: string };
+
+      if (!title || typeof title !== "string" || title.trim().length === 0) {
+        return res.status(400).json({ error: "Title is required" });
+      }
+      if (!description || typeof description !== "string" || description.trim().length === 0) {
+        return res.status(400).json({ error: "Description is required" });
+      }
+
+      const result = await db
+        .insert(presetPlots)
+        .values({ title: title.trim(), description: description.trim() })
+        .returning({ id: presetPlots.id, title: presetPlots.title, description: presetPlots.description });
+
+      res.status(201).json({
+        id: String(result[0].id),
+        titulo: result[0].title,
+        descripcion: result[0].description,
+      });
+    } catch (error) {
+      console.error("Error in POST /api/plots:", error);
+      res.status(500).json({ error: "Error creating plot" });
+    }
+  });
+
+  // PATCH /api/plots/:plotId - Update a plot (protected)
+  app.patch("/api/plots/:plotId", requireAdminKey, async (req, res) => {
+    try {
+      const plotId = parseInt(req.params.plotId, 10);
+      
+      if (isNaN(plotId)) {
+        return res.status(400).json({ error: "Invalid plot ID" });
+      }
+
+      const { title, description } = req.body as { title?: string; description?: string };
+
+      // Check if plot exists
+      const existing = await db
+        .select({ id: presetPlots.id })
+        .from(presetPlots)
+        .where(eq(presetPlots.id, plotId))
+        .limit(1);
+
+      if (existing.length === 0) {
+        return res.status(404).json({ error: "Plot not found" });
+      }
+
+      // Build update object
+      const updates: { title?: string; description?: string } = {};
+      if (title && typeof title === "string") updates.title = title.trim();
+      if (description && typeof description === "string") updates.description = description.trim();
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ error: "No valid fields to update" });
+      }
+
+      const result = await db
+        .update(presetPlots)
+        .set(updates)
+        .where(eq(presetPlots.id, plotId))
+        .returning({ id: presetPlots.id, title: presetPlots.title, description: presetPlots.description });
+
+      res.json({
+        id: String(result[0].id),
+        titulo: result[0].title,
+        descripcion: result[0].description,
+      });
+    } catch (error) {
+      console.error("Error in PATCH /api/plots/:plotId:", error);
+      res.status(500).json({ error: "Error updating plot" });
+    }
+  });
+
+  // DELETE /api/plots/:plotId - Delete a plot (protected)
+  app.delete("/api/plots/:plotId", requireAdminKey, async (req, res) => {
+    try {
+      const plotId = parseInt(req.params.plotId, 10);
+      
+      if (isNaN(plotId)) {
+        return res.status(400).json({ error: "Invalid plot ID" });
+      }
+
+      // Check if plot exists
+      const existing = await db
+        .select({ id: presetPlots.id })
+        .from(presetPlots)
+        .where(eq(presetPlots.id, plotId))
+        .limit(1);
+
+      if (existing.length === 0) {
+        return res.status(404).json({ error: "Plot not found" });
+      }
+
+      await db.delete(presetPlots).where(eq(presetPlots.id, plotId));
+
+      res.json({ success: true, deletedId: String(plotId) });
+    } catch (error) {
+      console.error("Error in DELETE /api/plots/:plotId:", error);
+      res.status(500).json({ error: "Error deleting plot" });
+    }
+  });
+
   // Validate custom plot - PII check first, then AI moderation
   app.post("/api/validate-custom-plot", async (req, res) => {
     try {

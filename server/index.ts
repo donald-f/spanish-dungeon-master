@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { seedPlots } from "./seedPlots";
 
 const app = express();
 const httpServer = createServer(app);
@@ -60,6 +61,16 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Auto-seed plots if table is empty
+  try {
+    const seededCount = await seedPlots();
+    if (seededCount > 0) {
+      log(`Auto-seeded ${seededCount} plots on startup`);
+    }
+  } catch (err) {
+    console.error("Warning: Failed to auto-seed plots:", err);
+  }
+
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
