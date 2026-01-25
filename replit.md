@@ -72,6 +72,27 @@ Fetches all preset plots from the database (randomized).
 - Query: No parameters required (level/duration filtering removed for simplicity)
 - Response: `{ plots: PlotHook[] }` - All plots shuffled server-side
 
+### Admin Plot Endpoints (Protected)
+All admin endpoints require `X-Admin-Key` header matching `ADMIN_SECRET` env variable.
+
+#### GET /api/plots/:plotId
+Get a specific plot by ID.
+- Response: `{ id, titulo, descripcion }`
+
+#### POST /api/plots
+Create a new plot.
+- Body: `{ title: string, description: string }`
+- Response: `{ id, titulo, descripcion }`
+
+#### PATCH /api/plots/:plotId
+Update an existing plot.
+- Body: `{ title?: string, description?: string }`
+- Response: `{ id, titulo, descripcion }`
+
+#### DELETE /api/plots/:plotId
+Delete a plot.
+- Response: `{ success: true, deletedId: string }`
+
 ### POST /api/validate-custom-plot
 Validates a custom plot for PII and inappropriate content.
 - Body: `{ title: string, description: string }`
@@ -101,7 +122,7 @@ Validates and retrieves an existing game session for resuming play.
 ## Game Flow
 1. **Setup**: Player selects Spanish level (A2/B1/B2) and duration (corta/media/larga)
 2. **Plot Selection**: 
-   - 3 preset plots loaded from DB (990 total plots seeded)
+   - 3 preset plots loaded from DB (110 unique plots, auto-seeded on startup)
    - "Show more" button to load additional plots via pagination
    - Option to create custom plot with PII validation and AI moderation
 3. **Playing**: Turn-based loop with narration, options, danger tracking, and health
