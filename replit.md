@@ -131,7 +131,12 @@ Validates and retrieves an existing game session for resuming play.
 
 ## User Preferences
 - **Dark Mode**: Persisted in localStorage (key: "aventura_dark_mode")
-- **Text-to-Speech**: Narration is read aloud in Spanish using Web Speech API (key: "aventura_tts_mute" for mute toggle)
+- **Text-to-Speech**: Narration is read aloud in Spanish using Web Speech API
+  - Mute toggle persisted in localStorage (key: "aventura_tts_mute")
+  - Mobile-compatible: warm-up on first interaction, voiceschanged event listener
+  - iOS workarounds: resume interval to prevent pause, text chunking for long narrations
+  - Replay button next to narration for manual TTS trigger (works even when muted)
+  - Timeout mechanism to prevent stuck speaking state in unsupported browsers
 - **Session Persistence**: Session ID cached in localStorage for resume capability
 
 ## AI Response Format (Extended)
