@@ -1,0 +1,94 @@
+{
+  "ended": false,
+  "plots": [
+    {
+      "id": "1099",
+      "titulo": "La diligencia perdida",
+      "descripcion": "Una diligencia con pasajeros importantes desapareció. Te dan un mapa del recorrido y provisiones. Las pistas llevan al desierto."
+    },
+    {
+      "id": "1030",
+      "titulo": "La sombra que sigue",
+      "descripcion": "Tu sombra empezó a moverse de forma independiente. Un ocultista te entrega un espejo pequeño y un talismán. Y parece que la sombra tiene sus propios planes."
+    },
+    {
+      "id": "1021",
+      "titulo": "La casa de muñecas",
+      "descripcion": "Una casa abandonada al final del camino está llena de muñecas antiguas. Un sacerdote te entrega agua bendita, una linterna y algunos calmantes. Por la noche, las muñecas parecen cambiar de lugar."
+    }
+  ],
+  "duration": "corta",
+  "gameState": {
+    "plot": {
+      "id": "1091",
+      "titulo": "El duelo al amanecer",
+      "descripcion": "Un forajido te acusa públicamente y exige un duelo. Un viejo sheriff te presta un revólver confiable y algunos consejos. Si ganas, limpiarás tu nombre."
+    },
+    "salud": 100,
+    "history": [
+      {
+        "peligro": {
+          "nivel": "medio",
+          "razon": "La amenaza del duelo es real y podría resultar en heridas serias o muerte si no actúa con cuidado."
+        },
+        "opciones": [
+          {
+            "id": "A",
+            "texto": "Aceptar el duelo y prepararte para disparar en el amanecer."
+          },
+          {
+            "id": "B",
+            "texto": "Negarte al duelo e intentar razonar con el forajido."
+          },
+          {
+            "id": "C",
+            "texto": "Huir del pueblo e intentar evitar el enfrentamiento."
+          }
+        ],
+        "inputMode": "Acción",
+        "narracion": "Es un amanecer polvoriento en el pequeño pueblo de Dust Creek. Los rayos del sol apenas iluminan las callejuelas cuando oyes el grito de un hombre enfurecido en el centro del pueblo. Al acercarte, ves a un forajido, un hombre alto con cara dura y mirada feroz, señalándote con un dedo acusador. \"¡Tú robaste mi caballo, traidor! Solo hay una forma de arreglar esto: un duelo al amanecer.\" Los murmullos del pueblo llenan el aire. La tensión es palpable. Un viejo sheriff que pasó por el pueblo se acerca a ti lentamente y te entrega un revólver confiable. Con voz grave te dice: \"Escúchame, muchacho. Tienes que ser rápido y decisivo, o te matará.\" El forajido te mira fijamente, esperando tu respuesta.",
+        "timestamp": 1769372673275,
+        "userInput": "Elegir: El duelo al amanecer",
+        "turnNumber": 1,
+        "consecuencia": "El jugador se encuentra en una situación peligrosa que puede definir su futuro.",
+        "pistaProfesor": ""
+      }
+    ],
+    "tension": 0.3,
+    "banderas": [],
+    "duration": "corta",
+    "progreso": 0,
+    "gameEnded": false,
+    "inventory": { "items": [], "pistas": [] },
+    "sessionId": "071e2cb7-b7b8-49c5-a45e-d95e26c08e41",
+    "turnIndex": 1,
+    "learningLog": [],
+    "targetTurns": 12,
+    "spanishLevel": "A2",
+    "estadoAfectos": [],
+    "currentOptions": [
+      {
+        "id": "A",
+        "texto": "Aceptar el duelo y prepararte para disparar en el amanecer."
+      },
+      {
+        "id": "B",
+        "texto": "Negarte al duelo e intentar razonar con el forajido."
+      },
+      {
+        "id": "C",
+        "texto": "Huir del pueblo e intentar evitar el enfrentamiento."
+      }
+    ],
+    "currentPeligro": {
+      "nivel": "medio",
+      "razon": "La amenaza del duelo es real y podría resultar en heridas serias o muerte si no actúa con cuidado."
+    },
+    "resumenMemoria": "Un forajido acusa al jugador de robar su caballo y exige un duelo al amanecer. El sheriff le ha prestado un revólver.",
+    "currentNarracion": "Es un amanecer polvoriento en el pequeño pueblo de Dust Creek. Los rayos del sol apenas iluminan las callejuelas cuando oyes el grito de un hombre enfurecido en el centro del pueblo. Al acercarte, ves a un forajido, un hombre alto con cara dura y mirada feroz, señalándote con un dedo acusador. \"¡Tú robaste mi caballo, traidor! Solo hay una forma de arreglar esto: un duelo al amanecer.\" Los murmullos del pueblo llenan el aire. La tensión es palpable. Un viejo sheriff que pasó por el pueblo se acerca a ti lentamente y te entrega un revólver confiable. Con voz grave te dice: \"Escúchame, muchacho. Tienes que ser rápido y decisivo, o te matará.\" El forajido te mira fijamente, esperando tu respuesta.",
+    "permitirPreguntas": true,
+    "permitirTextoLibre": false,
+    "currentConsecuencia": "El jugador se encuentra en una situación peligrosa que puede definir su futuro."
+  },
+  "spanishLevel": "A2"
+}

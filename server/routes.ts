@@ -700,8 +700,14 @@ DESCRIPCIÓN: ${selectedPlot.descripcion}
 ESTADO INICIAL DEL JUGADOR:
 - Salud: 100
 - Estados de afecto: ninguno
-- Inventario: vacío
+- Inventario: vacío (ver abajo para objetos iniciales)
 - Banderas: ninguna
+
+IMPORTANTE - OBJETOS INICIALES:
+La descripción de la trama menciona objetos que el jugador recibe al comenzar. 
+DEBES agregar TODOS estos objetos al inventario en tu respuesta usando "inventario.agregar".
+Por ejemplo, si dice "te entregan un revólver y provisiones", debes incluir:
+"inventario": { "agregar": ["revólver", "provisiones"], "quitar": [] }
 
 Este es el turno 1 de ${targetTurns}. El progreso debe ser 0.0.
 Genera la escena inicial que presenta el escenario, el peligro potencial, y ofrece las primeras opciones al jugador.
@@ -714,6 +720,9 @@ Indica el nivel de peligro inicial de la situación.`,
       const content = completion.choices[0]?.message?.content || "";
       const aiResponse = parseAIResponse(content);
 
+      // Process starting items from AI response
+      const startingItems = aiResponse.inventario?.agregar || [];
+      
       const gameState: GameState = {
         sessionId,
         spanishLevel,
@@ -723,7 +732,7 @@ Indica el nivel de peligro inicial de la situación.`,
         progreso: aiResponse.estado.progreso,
         tension: aiResponse.estado.tension,
         plot: selectedPlot,
-        inventory: { items: [], pistas: [] },
+        inventory: { items: startingItems, pistas: [] },
         resumenMemoria: aiResponse.resumen_memoria,
         history: [
           {
