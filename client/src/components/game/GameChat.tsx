@@ -393,7 +393,7 @@ export function GameChat({
         />
       </div>
 
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+      <ScrollArea className={`${isMobile && !gameEnded ? 'h-auto' : 'flex-1'} p-4`} ref={scrollRef}>
         <div className="space-y-6">
           {/* On desktop, show narration inline. On mobile, only show after narration modal closed */}
           {!isMobile && (
@@ -415,10 +415,10 @@ export function GameChat({
             </>
           )}
 
-          {/* On mobile, show a prompt to access history */}
+          {/* On mobile, show a compact prompt to access history */}
           {isMobile && !gameEnded && (
-            <div className="text-center py-4 text-muted-foreground">
-              <p className="text-sm">Usa el botón "Historial" para ver turnos anteriores.</p>
+            <div className="text-center py-2 text-muted-foreground">
+              <p className="text-xs">Usa el botón "Historial" para ver turnos anteriores.</p>
             </div>
           )}
 
@@ -618,7 +618,7 @@ export function GameChat({
       </Dialog>
 
       <Dialog open={showNarrationModal} onOpenChange={(open) => !open && handleCloseNarrationModal()}>
-        <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto" data-testid="modal-narration">
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[80vh] overflow-y-auto" data-testid="modal-narration">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-primary" />
