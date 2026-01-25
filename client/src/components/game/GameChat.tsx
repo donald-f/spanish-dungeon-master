@@ -27,6 +27,7 @@ import {
   Skull,
   Shield,
   Zap,
+  BookOpen,
 } from "lucide-react";
 import type {
   GameState,
@@ -201,6 +202,20 @@ export function GameChat({
   const lastSpokenRef = useRef<string>("");
   const [showPreguntaModal, setShowPreguntaModal] = useState(false);
   const [showGrammarModal, setShowGrammarModal] = useState(false);
+  const [showNarrationModal, setShowNarrationModal] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const lastNarrationShownRef = useRef<string>("");
+  const pendingNarrationModalRef = useRef(false);
+
+  // Detect mobile viewport
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -217,8 +232,46 @@ export function GameChat({
   useEffect(() => {
     if (grammarFeedback) {
       setShowGrammarModal(true);
+      // On mobile, mark that narration modal should show after grammar modal closes
+      if (isMobile) {
+        pendingNarrationModalRef.current = true;
+      }
     }
-  }, [grammarFeedback]);
+  }, [grammarFeedback, isMobile]);
+
+  // Show narration modal on mobile when new narration arrives (only if no grammar feedback pending)
+  useEffect(() => {
+    // Only trigger narration modal if:
+    // 1. On mobile
+    // 2. New narration that hasn't been shown
+    // 3. No grammar modal is showing or pending (including pendingNarration which indicates grammar feedback is expected)
+    // 4. No other modals are showing
+    // 5. Game not ended
+    if (
+      isMobile &&
+      gameState.currentNarracion &&
+      gameState.currentNarracion !== lastNarrationShownRef.current &&
+      !showGrammarModal &&
+      !grammarFeedback &&
+      !pendingNarration &&
+      !pendingNarrationModalRef.current &&
+      !showPreguntaModal &&
+      !preguntaRespuesta &&
+      !gameEnded
+    ) {
+      lastNarrationShownRef.current = gameState.currentNarracion;
+      setShowNarrationModal(true);
+    }
+  }, [
+    isMobile,
+    gameState.currentNarracion,
+    showGrammarModal,
+    grammarFeedback,
+    pendingNarration,
+    showPreguntaModal,
+    preguntaRespuesta,
+    gameEnded,
+  ]);
 
   useEffect(() => {
     if (
@@ -246,6 +299,16 @@ export function GameChat({
       lastSpokenRef.current = pendingNarration;
       onSpeakNarration(pendingNarration);
     }
+    // On mobile, show narration modal after grammar modal closes
+    if (isMobile && pendingNarrationModalRef.current && gameState.currentNarracion) {
+      pendingNarrationModalRef.current = false;
+      lastNarrationShownRef.current = gameState.currentNarracion;
+      setShowNarrationModal(true);
+    }
+  };
+
+  const handleCloseNarrationModal = () => {
+    setShowNarrationModal(false);
   };
 
   const handleOptionClick = (option: GameOption) => {
@@ -332,21 +395,32 @@ export function GameChat({
 
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
         <div className="space-y-6">
-          {gameState.history.length > 1 && <Separator className="my-4" />}
+          {/* On desktop, show narration inline. On mobile, only show after narration modal closed */}
+          {!isMobile && (
+            <>
+              {gameState.history.length > 1 && <Separator className="my-4" />}
 
-          {gameState.history.length > 0 && (
-            <div className="bg-muted/50 rounded-lg p-3">
-              <p className="text-sm text-muted-foreground">Tu acción:</p>
-              <p className="font-medium">
-                {gameState.history[gameState.history.length - 1].userInput}
-              </p>
-            </div>
+              {gameState.history.length > 0 && (
+                <div className="bg-muted/50 rounded-lg p-3">
+                  <p className="text-sm text-muted-foreground">Tu acción:</p>
+                  <p className="font-medium">
+                    {gameState.history[gameState.history.length - 1].userInput}
+                  </p>
+                </div>
+              )}
+
+              <div className="story-text leading-relaxed whitespace-pre-wrap">
+                {gameState.currentNarracion}
+              </div>
+            </>
           )}
 
-          <div className="story-text leading-relaxed whitespace-pre-wrap">
-            {gameState.currentNarracion}
-          </div>
-
+          {/* On mobile, show a prompt to access history */}
+          {isMobile && !gameEnded && (
+            <div className="text-center py-4 text-muted-foreground">
+              <p className="text-sm">Usa el botón "Historial" para ver turnos anteriores.</p>
+            </div>
+          )}
 
           {isGameOver && (
             <div
@@ -538,6 +612,43 @@ export function GameChat({
               data-testid="button-close-grammar-modal"
             >
               Continuar con la Historia
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showNarrationModal} onOpenChange={(open) => !open && handleCloseNarrationModal()}>
+        <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto" data-testid="modal-narration">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-primary" />
+              Turno {gameState.turnIndex}
+            </DialogTitle>
+            <DialogDescription>
+              La historia continúa...
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {gameState.history.length > 0 && (
+              <div className="bg-muted/50 rounded-lg p-3">
+                <p className="text-sm text-muted-foreground">Tu acción:</p>
+                <p className="font-medium">
+                  {gameState.history[gameState.history.length - 1]?.userInput}
+                </p>
+              </div>
+            )}
+            <div className="story-text leading-relaxed whitespace-pre-wrap bg-background p-4 rounded-lg border">
+              {gameState.currentNarracion}
+            </div>
+            {gameState.currentPeligro && (
+              <DangerIndicator peligro={gameState.currentPeligro} />
+            )}
+            <Button
+              onClick={handleCloseNarrationModal}
+              className="w-full"
+              data-testid="button-close-narration-modal"
+            >
+              Ver Opciones
             </Button>
           </div>
         </DialogContent>

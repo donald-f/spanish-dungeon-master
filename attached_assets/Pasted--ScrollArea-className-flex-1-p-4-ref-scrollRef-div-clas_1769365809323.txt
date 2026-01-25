@@ -1,0 +1,85 @@
+    <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+        <div className="space-y-6">
+          {gameState.history.length > 1 && <Separator className="my-4" />}
+
+          {gameState.history.length > 0 && (
+            <div className="bg-muted/50 rounded-lg p-3">
+              <p className="text-sm text-muted-foreground">Tu acción:</p>
+              <p className="font-medium">
+                {gameState.history[gameState.history.length - 1].userInput}
+              </p>
+            </div>
+          )}
+
+          <div className="story-text leading-relaxed whitespace-pre-wrap">
+            {gameState.currentNarracion}
+          </div>
+
+
+          {isGameOver && (
+            <div
+              className="flex flex-col items-center gap-4 py-8"
+              data-testid="game-over-screen"
+            >
+              <div className="p-4 rounded-full bg-destructive/10">
+                <Skull className="h-12 w-12 text-destructive" />
+              </div>
+              <h2 className="text-2xl font-bold text-center text-destructive">
+                Fin del Juego
+              </h2>
+              {gameOverRazon && (
+                <p className="text-muted-foreground text-center max-w-md story-text">
+                  {gameOverRazon}
+                </p>
+              )}
+              <p className="text-sm text-muted-foreground text-center">
+                La aventura ha terminado. Pero aprendiste algo nuevo en español.
+              </p>
+              {resumenAprendizajes && (
+                <LearningSummary resumen={resumenAprendizajes} />
+              )}
+            </div>
+          )}
+
+          {isFinal && !isGameOver && (
+            <div
+              className="flex flex-col items-center gap-4 py-8"
+              data-testid="victory-screen"
+            >
+              <div className="p-4 rounded-full bg-primary/10">
+                <Trophy className="h-12 w-12 text-primary" />
+              </div>
+              <h2 className="text-2xl font-bold text-center">
+                ¡Aventura Completada!
+              </h2>
+              {finalRazon && (
+                <p className="text-muted-foreground text-center max-w-md story-text">
+                  {finalRazon}
+                </p>
+              )}
+              <p className="text-sm text-muted-foreground text-center">
+                ¡Felicitaciones por completar la aventura y practicar tu
+                español!
+              </p>
+              {resumenAprendizajes && (
+                <LearningSummary resumen={resumenAprendizajes} />
+              )}
+            </div>
+          )}
+
+          {gameEnded && !isGameOver && !isFinal && (
+            <div className="flex flex-col items-center gap-4 py-8">
+              <div className="p-4 rounded-full bg-primary/10">
+                <Trophy className="h-12 w-12 text-primary" />
+              </div>
+              <h2 className="text-2xl font-bold text-center">
+                ¡Aventura Completada!
+              </h2>
+              <p className="text-muted-foreground text-center max-w-md">
+                Has terminado tu aventura en español. ¡Felicitaciones por
+                practicar el idioma de una manera tan divertida!
+              </p>
+            </div>
+          )}
+        </div>
+      </ScrollArea>

@@ -432,8 +432,6 @@ export async function registerRoutes(
     try {
       const spanishLevel = req.query.spanishLevel as string;
       const duration = req.query.duration as string;
-      const limit = Math.min(parseInt(req.query.limit as string) || 3, 50);
-      const offset = parseInt(req.query.offset as string) || 0;
 
       if (!spanishLevel || !duration) {
         return res
@@ -441,6 +439,7 @@ export async function registerRoutes(
           .json({ error: "spanishLevel and duration are required" });
       }
 
+      // Fetch all plots for this level/duration and randomize server-side
       const plots = await db
         .select({
           id: presetPlots.id,
@@ -453,17 +452,21 @@ export async function registerRoutes(
             eq(presetPlots.spanishLevel, spanishLevel),
             eq(presetPlots.duration, duration),
           ),
-        )
-        .limit(limit)
-        .offset(offset);
+        );
+
+      // Shuffle the plots using Fisher-Yates algorithm
+      const shuffled = [...plots];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
 
       res.json({
-        plots: plots.map((p) => ({
+        plots: shuffled.map((p) => ({
           id: String(p.id),
           titulo: p.title,
           descripcion: p.description,
         })),
-        hasMore: plots.length === limit,
       });
     } catch (error) {
       console.error("Error in /api/plots:", error);
@@ -517,11 +520,23 @@ export async function registerRoutes(
         });
       }
 
-      // AI moderation check
-      const moderationPrompt = `Analiza el siguiente contenido para un juego de aventura en español. Verifica que:
-1. NO contenga información personal (nombres reales, direcciones, teléfonos, emails)
-2. NO contenga contenido inapropiado, violento extremo u ofensivo
-3. Sea apropiado para un juego de aventura educativo
+      // AI moderation check - PG-13 adventure content allowed
+      const moderationPrompt = `Analiza el siguiente contenido para un juego de aventura de fantasía en español. 
+
+CONTENIDO PERMITIDO (PG-13):
+- Combate y batallas con espadas, magia, monstruos, esqueletos, dragones
+- Violencia de fantasía/aventura (peleas, ataques, peligros)
+- Temas de miedo, suspenso, misterio, horror ligero
+- Criaturas mágicas, hechizos, poderes sobrenaturales
+- Búsquedas, misiones, tesoros, mazmorras
+- Muerte/peligro de personajes ficticios
+
+CONTENIDO NO PERMITIDO (rechazar solo estos):
+- Información personal real (nombres, direcciones, teléfonos, emails)
+- Violencia gráfica extrema con descripciones gore detalladas
+- Contenido sexual explícito
+- Discurso de odio, discriminación
+- Promoción de actividades ilegales reales
 
 Título: "${title}"
 Descripción: "${description}"
@@ -534,7 +549,7 @@ Responde con JSON: { "approved": true/false, "reason": "explicación breve si no
           {
             role: "system",
             content:
-              "Eres un moderador de contenido para un juego educativo. Responde solo con JSON válido.",
+              "Eres un moderador permisivo para un juego de aventura de fantasía estilo PG-13. Aprueba contenido de combate, magia, monstruos, y peligros de fantasía. Solo rechaza contenido verdaderamente inapropiado. Responde solo con JSON válido.",
           },
           { role: "user", content: moderationPrompt },
         ],

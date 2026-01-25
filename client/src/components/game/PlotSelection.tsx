@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,34 +24,53 @@ export function PlotSelection({
   onSelectPlot,
   isLoading,
 }: PlotSelectionProps) {
-  const [plots, setPlots] = useState<PlotHook[]>(initialPlots);
-  const [offset, setOffset] = useState(initialPlots.length);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
+  // Start with initialPlots for immediate display, replace when fetch completes
+  const [allPlots, setAllPlots] = useState<PlotHook[]>(initialPlots);
+  const [displayCount, setDisplayCount] = useState(3);
+  const [loadingPlots, setLoadingPlots] = useState(false);
   const [showCustomForm, setShowCustomForm] = useState(false);
   const [customTitle, setCustomTitle] = useState("");
   const [customDescription, setCustomDescription] = useState("");
   const [customError, setCustomError] = useState<string | null>(null);
   const [validatingCustom, setValidatingCustom] = useState(false);
+  const [fetchKey, setFetchKey] = useState(`${spanishLevel}-${duration}`);
 
-  const handleShowMore = useCallback(async () => {
-    setLoadingMore(true);
-    try {
-      const response = await fetch(
-        `/api/plots?level=${spanishLevel}&duration=${duration}&offset=${offset}&limit=3`
-      );
-      if (!response.ok) throw new Error("Failed to load plots");
-      
-      const data = await response.json();
-      setPlots([...plots, ...data.plots]);
-      setOffset(offset + data.plots.length);
-      setHasMore(data.hasMore);
-    } catch {
-      setHasMore(false);
-    } finally {
-      setLoadingMore(false);
+  // Reset when level/duration changes
+  useEffect(() => {
+    const newKey = `${spanishLevel}-${duration}`;
+    if (newKey !== fetchKey) {
+      setFetchKey(newKey);
+      setAllPlots(initialPlots);
+      setDisplayCount(3);
     }
-  }, [spanishLevel, duration, offset, plots]);
+  }, [spanishLevel, duration, fetchKey, initialPlots]);
+
+  // Fetch all plots on mount or when fetchKey changes
+  useEffect(() => {
+    async function fetchAllPlots() {
+      setLoadingPlots(true);
+      try {
+        const response = await fetch(
+          `/api/plots?spanishLevel=${spanishLevel}&duration=${duration}`
+        );
+        if (!response.ok) throw new Error("Failed to load plots");
+        const data = await response.json();
+        setAllPlots(data.plots);
+      } catch {
+        // Keep using initial plots if fetch fails
+      } finally {
+        setLoadingPlots(false);
+      }
+    }
+    fetchAllPlots();
+  }, [fetchKey, spanishLevel, duration]);
+
+  const visiblePlots = allPlots.slice(0, displayCount);
+  const hasMore = displayCount < allPlots.length;
+
+  const handleShowMore = useCallback(() => {
+    setDisplayCount((prev) => Math.min(prev + 3, allPlots.length));
+  }, [allPlots.length]);
 
   const handleValidateCustomPlot = useCallback(async () => {
     setValidatingCustom(true);
@@ -109,7 +128,7 @@ export function PlotSelection({
           </div>
           
           <div className="space-y-4">
-            {plots.map((plot) => (
+            {visiblePlots.map((plot) => (
               <Card
                 key={plot.id}
                 className="hover-elevate cursor-pointer transition-all"
@@ -122,27 +141,22 @@ export function PlotSelection({
                 </CardContent>
               </Card>
             ))}
+            {loadingPlots && (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            )}
           </div>
           
-          {hasMore && (
+          {hasMore && !loadingPlots && (
             <div className="flex justify-center mt-6">
               <Button
                 variant="outline"
                 onClick={handleShowMore}
-                disabled={loadingMore}
                 data-testid="button-show-more-plots"
               >
-                {loadingMore ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Cargando...
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="h-4 w-4 mr-2" />
-                    Mostrar más historias
-                  </>
-                )}
+                <ChevronDown className="h-4 w-4 mr-2" />
+                Mostrar más historias ({allPlots.length - displayCount} restantes)
               </Button>
             </div>
           )}
