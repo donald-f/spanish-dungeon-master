@@ -678,11 +678,21 @@ Responde con JSON: { "approved": true/false, "reason": "explicación breve si no
           descripcion: customDescription,
         };
       } else {
-        const foundPlot = session.plots?.find((p) => p.id === plotId);
-        if (!foundPlot) {
+        // Look up plot from database instead of session
+        const dbPlot = await db.select()
+          .from(presetPlots)
+          .where(eq(presetPlots.id, parseInt(plotId, 10)))
+          .limit(1);
+        
+        if (dbPlot.length === 0) {
           return res.status(400).json({ error: "Trama no encontrada" });
         }
-        selectedPlot = foundPlot;
+        
+        selectedPlot = {
+          id: dbPlot[0].id.toString(),
+          titulo: dbPlot[0].title,
+          descripcion: dbPlot[0].description,
+        };
       }
 
       const targetTurns = durationToTurns[duration];
