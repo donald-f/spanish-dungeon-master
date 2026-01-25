@@ -52,7 +52,7 @@ server/
 ├── routes.ts                 # API endpoints
 ├── storage.ts                # PostgreSQL session storage with DatabaseStorage class
 ├── usageTracker.ts           # Monthly turn limit tracking (1600 turns = ~$40)
-├── seedPlots.ts              # Script to seed 990 preset plots
+├── seedPlots.ts              # Script to seed 110 unique preset plots (with starting buffs/items)
 ├── db.ts                     # Database connection setup
 └── index.ts
 shared/
@@ -68,9 +68,9 @@ Initializes a new game session and fetches 3 preset plot hooks from the database
 - Response: `{ sessionId: string, plots: PlotHook[] }`
 
 ### GET /api/plots
-Fetches paginated preset plots from the database.
-- Query: `?level=A2|B1|B2&duration=corta|media|larga&offset=0&limit=3`
-- Response: `{ plots: PlotHook[], hasMore: boolean }`
+Fetches all preset plots from the database (randomized).
+- Query: No parameters required (level/duration filtering removed for simplicity)
+- Response: `{ plots: PlotHook[] }` - All plots shuffled server-side
 
 ### POST /api/validate-custom-plot
 Validates a custom plot for PII and inappropriate content.

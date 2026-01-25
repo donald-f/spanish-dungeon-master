@@ -18,17 +18,13 @@ export const usageTracking = pgTable("usage_tracking", {
   pk: primaryKey({ columns: [table.year, table.month] }),
 }));
 
-// Preset plots table for DB-backed story options
+// Preset plots table for DB-backed story options (simplified - same plots for all levels/durations)
 export const presetPlots = pgTable("preset_plots", {
   id: serial("id").primaryKey(),
-  spanishLevel: text("spanish_level").notNull(), // A2, B1, B2
-  duration: text("duration").notNull(), // corta, media, larga
   title: text("title").notNull(),
   description: text("description").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-}, (table) => ({
-  levelDurationIdx: index("preset_plots_level_duration_idx").on(table.spanishLevel, table.duration),
-}));
+});
 
 export type PresetPlot = typeof presetPlots.$inferSelect;
 export type InsertPresetPlot = typeof presetPlots.$inferInsert;

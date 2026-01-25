@@ -24,7 +24,7 @@ import {
   getUsageStats,
 } from "./usageTracker";
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { validateNoPII, getPIIErrorMessage } from "@shared/piiValidation";
 
 const openai = new OpenAI({
@@ -427,32 +427,17 @@ export async function registerRoutes(
     }
   });
 
-  // Get preset plots with pagination
+  // Get all preset plots (randomized)
   app.get("/api/plots", async (req, res) => {
     try {
-      const spanishLevel = req.query.spanishLevel as string;
-      const duration = req.query.duration as string;
-
-      if (!spanishLevel || !duration) {
-        return res
-          .status(400)
-          .json({ error: "spanishLevel and duration are required" });
-      }
-
-      // Fetch all plots for this level/duration and randomize server-side
+      // Fetch all plots and randomize server-side
       const plots = await db
         .select({
           id: presetPlots.id,
           title: presetPlots.title,
           description: presetPlots.description,
         })
-        .from(presetPlots)
-        .where(
-          and(
-            eq(presetPlots.spanishLevel, spanishLevel),
-            eq(presetPlots.duration, duration),
-          ),
-        );
+        .from(presetPlots);
 
       // Shuffle the plots using Fisher-Yates algorithm
       const shuffled = [...plots];
@@ -607,21 +592,23 @@ Responde con JSON: { "approved": true/false, "reason": "explicación breve si no
 
       const session = await storage.createSession(spanishLevel, duration);
 
-      // Fetch first 3 plots from database instead of AI generation
-      const dbPlots = await db
+      // Fetch first 3 random plots from database
+      const allPlots = await db
         .select({
           id: presetPlots.id,
           title: presetPlots.title,
           description: presetPlots.description,
         })
-        .from(presetPlots)
-        .where(
-          and(
-            eq(presetPlots.spanishLevel, spanishLevel),
-            eq(presetPlots.duration, duration),
-          ),
-        )
-        .limit(3);
+        .from(presetPlots);
+
+      // Shuffle and take first 3
+      const shuffled = [...allPlots];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+
+      const dbPlots = shuffled.slice(0, 3);
 
       const plots: PlotHook[] = dbPlots.map((p) => ({
         id: String(p.id),

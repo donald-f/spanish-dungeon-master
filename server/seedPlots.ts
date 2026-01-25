@@ -1,6 +1,6 @@
 import { db } from "./db";
-import { presetPlots, spanishLevels, durations } from "@shared/schema";
-import { eq, and, count } from "drizzle-orm";
+import { presetPlots } from "@shared/schema";
+import { count } from "drizzle-orm";
 import { fileURLToPath } from "url";
 
 // Plot templates organized by theme categories
@@ -709,48 +709,34 @@ function generatePlotsForLevel(
 export async function seedPlots() {
   console.log("Starting plot seeding...");
 
-  const levels = ["A2", "B1", "B2"];
-  const durs = ["corta", "media", "larga"];
+  // Check if plots already exist
+  const existingCount = await db
+    .select({ count: count() })
+    .from(presetPlots);
+
+  const existing = existingCount[0]?.count ?? 0;
+
+  if (existing >= 100) {
+    console.log(`Skipping seeding: already has ${existing} plots`);
+    return 0;
+  }
+
+  // Generate plots (level/duration are ignored now, just use defaults)
+  const plots = generatePlotsForLevel("B1", "media");
+  const toInsert = plots.slice(0, 110 - existing);
 
   let totalInserted = 0;
 
-  for (const level of levels) {
-    for (const dur of durs) {
-      // Check if plots already exist for this combo
-      const existingCount = await db
-        .select({ count: count() })
-        .from(presetPlots)
-        .where(
-          and(
-            eq(presetPlots.spanishLevel, level),
-            eq(presetPlots.duration, dur),
-          ),
-        );
+  if (toInsert.length > 0) {
+    await db.insert(presetPlots).values(
+      toInsert.map((p) => ({
+        title: p.title,
+        description: p.description,
+      })),
+    );
 
-      const existing = existingCount[0]?.count ?? 0;
-
-      if (existing >= 100) {
-        console.log(`Skipping ${level}/${dur}: already has ${existing} plots`);
-        continue;
-      }
-
-      const plots = generatePlotsForLevel(level, dur);
-      const toInsert = plots.slice(0, 110 - existing);
-
-      if (toInsert.length > 0) {
-        await db.insert(presetPlots).values(
-          toInsert.map((p) => ({
-            spanishLevel: level,
-            duration: dur,
-            title: p.title,
-            description: p.description,
-          })),
-        );
-
-        console.log(`Inserted ${toInsert.length} plots for ${level}/${dur}`);
-        totalInserted += toInsert.length;
-      }
-    }
+    console.log(`Inserted ${toInsert.length} plots`);
+    totalInserted = toInsert.length;
   }
 
   console.log(`Seeding complete. Total new plots: ${totalInserted}`);
