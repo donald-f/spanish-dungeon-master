@@ -618,26 +618,26 @@ export function GameChat({
       </Dialog>
 
       <Dialog open={showNarrationModal} onOpenChange={(open) => !open && handleCloseNarrationModal()}>
-        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[80vh] overflow-y-auto" data-testid="modal-narration">
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[80vh] overflow-y-auto overflow-x-hidden" data-testid="modal-narration">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-primary" />
-              Turno {gameState.turnIndex}
+              <BookOpen className="h-5 w-5 text-primary flex-shrink-0" />
+              <span>Turno {gameState.turnIndex}</span>
             </DialogTitle>
             <DialogDescription>
               La historia continúa...
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-hidden">
             {gameState.history.length > 0 && (
               <div className="bg-muted/50 rounded-lg p-3">
                 <p className="text-sm text-muted-foreground">Tu acción:</p>
-                <p className="font-medium">
+                <p className="font-medium break-words">
                   {gameState.history[gameState.history.length - 1]?.userInput}
                 </p>
               </div>
             )}
-            <div className="story-text leading-relaxed whitespace-pre-wrap bg-background p-4 rounded-lg border">
+            <div className="story-text leading-relaxed whitespace-pre-wrap break-words bg-background p-4 rounded-lg border">
               {gameState.currentNarracion}
             </div>
             {gameState.currentPeligro && (
