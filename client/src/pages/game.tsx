@@ -18,6 +18,11 @@ const SESSION_ENDED_KEY = "aventura_session_ended";
 const DARK_MODE_KEY = "aventura_dark_mode";
 const TTS_MUTE_KEY = "aventura_tts_mute";
 
+function isMobileDevice(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
 type GamePhase = "setup" | "selectPlot" | "playing" | "ended" | "loading";
 
 export default function Game() {
@@ -47,6 +52,7 @@ export default function Game() {
   const [pendingNarration, setPendingNarration] = useState<string | null>(null);
   const [preguntaQuestion, setPreguntaQuestion] = useState<string | null>(null);
   const { speak, stop: stopTTS, warmUp: warmUpTTS, isSpeaking: isTTSSpeaking, isReady: isTTSReady } = useTTS({ lang: "es-ES", rate: 0.9 });
+  const [isMobile] = useState(() => isMobileDevice());
   const [limitError, setLimitError] = useState<string | null>(null);
   const [isGameOver, setIsGameOver] = useState(false);
   const [gameOverRazon, setGameOverRazon] = useState<string | undefined>();
@@ -133,10 +139,11 @@ export default function Game() {
   }, [isMuted, stopTTS]);
 
   const speakNarration = useCallback((text: string, forceSpeak = false) => {
+    if (isMobile && !forceSpeak) return;
     if (forceSpeak || (!isMuted && text)) {
       speak(text);
     }
-  }, [isMuted, speak]);
+  }, [isMuted, isMobile, speak]);
 
   const handleManualSpeak = useCallback((text: string) => {
     warmUpTTS();
@@ -587,16 +594,18 @@ export default function Game() {
               </Button>
             )}
             
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleMute}
-              data-testid="button-toggle-mute"
-              title={isMuted ? "Activar narración" : "Silenciar narración"}
-              aria-label={isMuted ? "Activar narración" : "Silenciar narración"}
-            >
-              {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-            </Button>
+            {!isMobile && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleMute}
+                data-testid="button-toggle-mute"
+                title={isMuted ? "Activar narración" : "Silenciar narración"}
+                aria-label={isMuted ? "Activar narración" : "Silenciar narración"}
+              >
+                {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+              </Button>
+            )}
             
             <Button
               variant="ghost"

@@ -137,6 +137,7 @@ Validates and retrieves an existing game session for resuming play.
   - iOS workarounds: resume interval to prevent pause, text chunking for long narrations
   - Replay button next to narration for manual TTS trigger (works even when muted)
   - Timeout mechanism to prevent stuck speaking state in unsupported browsers
+  - Mobile: Auto-play disabled (use replay button), mute toggle hidden
 - **Session Persistence**: Session ID cached in localStorage for resume capability
 
 ## AI Response Format (Extended)
