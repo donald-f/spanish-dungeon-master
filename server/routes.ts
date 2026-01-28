@@ -389,12 +389,40 @@ function setTextLockCount(banderas: string[], n: number): string[] {
   return filtered;
 }
 
+/**
+ * Sanitizes a JSON string by removing or escaping control characters
+ * that can cause JSON.parse to fail. OpenAI sometimes returns JSON with
+ * unescaped newlines, tabs, or other control characters inside string values.
+ */
+function sanitizeJsonString(jsonStr: string): string {
+  // Replace control characters within JSON string values
+  // This regex matches content between quotes and escapes control chars
+  return jsonStr.replace(
+    /"(?:[^"\\]|\\.)*"/g,
+    (match) => {
+      return match
+        .replace(/[\x00-\x1F]/g, (char) => {
+          // Convert control characters to their escaped equivalents
+          switch (char) {
+            case '\n': return '\\n';
+            case '\r': return '\\r';
+            case '\t': return '\\t';
+            case '\b': return '\\b';
+            case '\f': return '\\f';
+            default: return ''; // Remove other control characters
+          }
+        });
+    }
+  );
+}
+
 function parseAIResponse(content: string): AIResponse {
   const cleaned = content
     .replace(/```json\n?/g, "")
     .replace(/```\n?/g, "")
     .trim();
-  const parsed = JSON.parse(cleaned);
+  const sanitized = sanitizeJsonString(cleaned);
+  const parsed = JSON.parse(sanitized);
 
   if (parsed.game_over || parsed.final) {
     parsed.opciones = [];
@@ -857,7 +885,8 @@ Responde con JSON: { "approved": true/false, "reason": "explicación breve si no
           .replace(/```json\n?/g, "")
           .replace(/```\n?/g, "")
           .trim();
-        modResult = JSON.parse(cleaned);
+        const sanitized = sanitizeJsonString(cleaned);
+        modResult = JSON.parse(sanitized);
       } catch {
         modResult = { approved: true };
       }
