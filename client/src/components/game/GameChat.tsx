@@ -292,7 +292,12 @@ export function GameChat({
       lastSpokenRef.current = gameState.currentNarracion;
       onSpeakNarration(gameState.currentNarracion);
     }
-  }, [gameState.currentNarracion, onSpeakNarration, showGrammarModal, grammarFeedback]);
+  }, [
+    gameState.currentNarracion,
+    onSpeakNarration,
+    showGrammarModal,
+    grammarFeedback,
+  ]);
 
   const handleClosePreguntaModal = () => {
     setShowPreguntaModal(false);
@@ -308,7 +313,11 @@ export function GameChat({
       onSpeakNarration(pendingNarration);
     }
     // On mobile, show narration modal after grammar modal closes
-    if (isMobile && pendingNarrationModalRef.current && gameState.currentNarracion) {
+    if (
+      isMobile &&
+      pendingNarrationModalRef.current &&
+      gameState.currentNarracion
+    ) {
       pendingNarrationModalRef.current = false;
       lastNarrationShownRef.current = gameState.currentNarracion;
       setShowNarrationModal(true);
@@ -401,7 +410,10 @@ export function GameChat({
         />
       </div>
 
-      <ScrollArea className={`${isMobile && !gameEnded ? 'h-auto' : 'flex-1'} p-4`} ref={scrollRef}>
+      <ScrollArea
+        className={`${isMobile && !gameEnded ? "h-auto" : "flex-1"} p-4`}
+        ref={scrollRef}
+      >
         <div className="space-y-6">
           {/* On desktop, show narration inline. On mobile, only show after narration modal closed */}
           {!isMobile && (
@@ -426,9 +438,13 @@ export function GameChat({
                     variant="ghost"
                     size="icon"
                     className="absolute top-0 right-0 opacity-60 hover:opacity-100"
-                    onClick={() => onReplayNarration(gameState.currentNarracion)}
+                    onClick={() =>
+                      onReplayNarration(gameState.currentNarracion)
+                    }
                     disabled={isTTSSpeaking}
-                    title={isTTSSpeaking ? "Reproduciendo..." : "Escuchar narración"}
+                    title={
+                      isTTSSpeaking ? "Reproduciendo..." : "Escuchar narración"
+                    }
                     data-testid="button-replay-tts"
                   >
                     {isTTSSpeaking ? (
@@ -445,7 +461,9 @@ export function GameChat({
           {/* On mobile, show a compact prompt to access history */}
           {isMobile && !gameEnded && (
             <div className="text-center py-2 text-muted-foreground">
-              <p className="text-xs">Usa el botón "Historial" para ver turnos anteriores.</p>
+              <p className="text-xs">
+                Usa el botón "Historial" para ver turnos anteriores.
+              </p>
             </div>
           )}
 
@@ -586,21 +604,24 @@ export function GameChat({
         </CardContent>
       )}
 
-      <Dialog open={showPreguntaModal} onOpenChange={(open) => !open && handleClosePreguntaModal()}>
+      <Dialog
+        open={showPreguntaModal}
+        onOpenChange={(open) => !open && handleClosePreguntaModal()}
+      >
         <DialogContent className="sm:max-w-md" data-testid="modal-pregunta">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MessageCircle className="h-5 w-5 text-primary" />
               Respuesta del Profesor
             </DialogTitle>
-            <DialogDescription>
-              Pregunta sobre español
-            </DialogDescription>
+            <DialogDescription>Pregunta sobre español</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             {preguntaQuestion && (
               <div className="bg-muted/50 rounded-lg p-3">
-                <p className="text-sm text-muted-foreground mb-1">Tu pregunta:</p>
+                <p className="text-sm text-muted-foreground mb-1">
+                  Tu pregunta:
+                </p>
                 <p className="font-medium">{preguntaQuestion}</p>
               </div>
             )}
@@ -618,7 +639,10 @@ export function GameChat({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showGrammarModal} onOpenChange={(open) => !open && handleCloseGrammarModal()}>
+      <Dialog
+        open={showGrammarModal}
+        onOpenChange={(open) => !open && handleCloseGrammarModal()}
+      >
         <DialogContent className="sm:max-w-md" data-testid="modal-grammar">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -644,16 +668,22 @@ export function GameChat({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showNarrationModal} onOpenChange={(open) => !open && handleCloseNarrationModal()}>
-        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[80vh] overflow-y-auto overflow-x-hidden" data-testid="modal-narration">
+      <Dialog
+        open={showNarrationModal}
+        onOpenChange={(open) => !open && handleCloseNarrationModal()}
+      >
+        <DialogContent
+          className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[80vh] overflow-y-auto overflow-x-hidden"
+          data-testid="modal-narration"
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-primary flex-shrink-0" />
               <span>Turno {gameState.turnIndex}</span>
             </DialogTitle>
-            <DialogDescription>
-              La historia continúa...
-            </DialogDescription>
+            {gameState.turnIndex > 1 && (
+              <DialogDescription>La historia continúa...</DialogDescription>
+            )}
           </DialogHeader>
           <div className="space-y-4 overflow-hidden">
             {gameState.history.length > 0 && (
@@ -665,17 +695,38 @@ export function GameChat({
               </div>
             )}
             <div className="relative">
-              <div className="story-text leading-relaxed whitespace-pre-wrap break-words bg-background p-4 rounded-lg border">
-                {gameState.currentNarracion}
-              </div>
-              {onReplayNarration && gameState.currentNarracion && (
+              {isMobile && onReplayNarration && gameState.currentNarracion && (
                 <Button
                   variant="ghost"
                   size="icon"
                   className="absolute top-2 right-2 opacity-60 hover:opacity-100"
                   onClick={() => onReplayNarration(gameState.currentNarracion)}
                   disabled={isTTSSpeaking}
-                  title={isTTSSpeaking ? "Reproduciendo..." : "Escuchar narración"}
+                  title={
+                    isTTSSpeaking ? "Reproduciendo..." : "Escuchar narración"
+                  }
+                  data-testid="button-replay-tts-mobile"
+                >
+                  {isTTSSpeaking ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Volume2 className="h-4 w-4" />
+                  )}
+                </Button>
+              )}
+              <div className="story-text leading-relaxed whitespace-pre-wrap break-words bg-background p-4 rounded-lg border">
+                {gameState.currentNarracion}
+              </div>
+              {!isMobile && onReplayNarration && gameState.currentNarracion && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-2 right-2 opacity-60 hover:opacity-100"
+                  onClick={() => onReplayNarration(gameState.currentNarracion)}
+                  disabled={isTTSSpeaking}
+                  title={
+                    isTTSSpeaking ? "Reproduciendo..." : "Escuchar narración"
+                  }
                   data-testid="button-replay-tts-mobile"
                 >
                   {isTTSSpeaking ? (
