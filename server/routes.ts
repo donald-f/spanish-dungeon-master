@@ -557,11 +557,11 @@ export async function registerRoutes(
       const session = await storage.getSession(sessionId);
 
       if (!session || !session.gameState) {
-        return res.status(404).json({ error: "session_not_found" });
+        return res.status(404).json({ error: "sesion_no_encontrada" });
       }
 
       if (session.gameState.gameEnded) {
-        return res.status(410).json({ error: "session_ended" });
+        return res.status(410).json({ error: "sesion_terminada" });
       }
 
       res.json({
@@ -782,28 +782,16 @@ export async function registerRoutes(
   // Validate custom plot - PII check first, then AI moderation
   app.post("/api/validate-custom-plot", async (req, res) => {
     try {
-      const { title, description } = req.body as {
-        title: string;
-        description: string;
-      };
-
-      // Length validation
-      if (!title || title.length < 10 || title.length > 120) {
+      const parseResult = validateCustomPlotSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        const errors = parseResult.error.flatten().fieldErrors;
+        const errorMsg = errors.title?.[0] || errors.description?.[0] || "Datos inválidos";
         return res.status(400).json({
           valid: false,
-          error: "El título debe tener entre 10 y 120 caracteres.",
+          error: errorMsg,
         });
       }
-      if (
-        !description ||
-        description.length < 50 ||
-        description.length > 1500
-      ) {
-        return res.status(400).json({
-          valid: false,
-          error: "La descripción debe tener entre 50 y 1500 caracteres.",
-        });
-      }
+      const { title, description } = parseResult.data;
 
       // PII validation (regex-based)
       const titlePII = validateNoPII(title);
@@ -929,12 +917,7 @@ Responde con JSON: { "approved": true/false, "reason": "explicación breve si no
         .from(presetPlots);
 
       // Shuffle and take first 3
-      const shuffled = [...allPlots];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-      }
-
+      const shuffled = shuffleArray(allPlots);
       const dbPlots = shuffled.slice(0, 3);
 
       const plots: PlotHook[] = dbPlots.map((p) => ({
