@@ -30,7 +30,7 @@ import { validateNoPII, getPIIErrorMessage } from "@shared/piiValidation";
 async function callOpenAIWithRetry<T>(
   fn: () => Promise<T>,
   maxRetries = 2,
-  context = "OpenAI call"
+  context = "OpenAI call",
 ): Promise<T> {
   let lastError: Error = new Error("Unknown error in OpenAI call");
   for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
@@ -45,14 +45,17 @@ async function callOpenAIWithRetry<T>(
         name: lastError.name,
         status: (error as { status?: number }).status,
         code: (error as { code?: string }).code,
-        stack: lastError.stack?.split('\n').slice(0, 3).join('\n'),
+        stack: lastError.stack?.split("\n").slice(0, 3).join("\n"),
       };
-      console.error(`[OpenAI Retry] Attempt ${attempt}/${maxRetries + 1} failed:`, JSON.stringify(errorDetails));
-      
+      console.error(
+        `[OpenAI Retry] Attempt ${attempt}/${maxRetries + 1} failed:`,
+        JSON.stringify(errorDetails),
+      );
+
       if (attempt <= maxRetries) {
         const delay = Math.min(1000 * Math.pow(2, attempt - 1), 4000);
         console.log(`[OpenAI Retry] Waiting ${delay}ms before retry...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
@@ -552,15 +555,17 @@ export async function registerRoutes(
   const requireAdminKey = (req: any, res: any, next: any) => {
     const adminKey = req.headers["x-admin-key"];
     const expectedKey = process.env.ADMIN_SECRET;
-    
+
     if (!expectedKey) {
       return res.status(500).json({ error: "ADMIN_SECRET not configured" });
     }
-    
+
     if (!adminKey || adminKey !== expectedKey) {
-      return res.status(401).json({ error: "Unauthorized - Invalid admin key" });
+      return res
+        .status(401)
+        .json({ error: "Unauthorized - Invalid admin key" });
     }
-    
+
     next();
   };
 
@@ -568,7 +573,7 @@ export async function registerRoutes(
   app.get("/api/plots/:plotId", requireAdminKey, async (req, res) => {
     try {
       const plotId = parseInt(req.params.plotId, 10);
-      
+
       if (isNaN(plotId)) {
         return res.status(400).json({ error: "Invalid plot ID" });
       }
@@ -601,19 +606,30 @@ export async function registerRoutes(
   // POST /api/plots - Create a new plot (protected)
   app.post("/api/plots", requireAdminKey, async (req, res) => {
     try {
-      const { title, description } = req.body as { title: string; description: string };
+      const { title, description } = req.body as {
+        title: string;
+        description: string;
+      };
 
       if (!title || typeof title !== "string" || title.trim().length === 0) {
         return res.status(400).json({ error: "Title is required" });
       }
-      if (!description || typeof description !== "string" || description.trim().length === 0) {
+      if (
+        !description ||
+        typeof description !== "string" ||
+        description.trim().length === 0
+      ) {
         return res.status(400).json({ error: "Description is required" });
       }
 
       const result = await db
         .insert(presetPlots)
         .values({ title: title.trim(), description: description.trim() })
-        .returning({ id: presetPlots.id, title: presetPlots.title, description: presetPlots.description });
+        .returning({
+          id: presetPlots.id,
+          title: presetPlots.title,
+          description: presetPlots.description,
+        });
 
       res.status(201).json({
         id: String(result[0].id),
@@ -630,12 +646,15 @@ export async function registerRoutes(
   app.patch("/api/plots/:plotId", requireAdminKey, async (req, res) => {
     try {
       const plotId = parseInt(req.params.plotId, 10);
-      
+
       if (isNaN(plotId)) {
         return res.status(400).json({ error: "Invalid plot ID" });
       }
 
-      const { title, description } = req.body as { title?: string; description?: string };
+      const { title, description } = req.body as {
+        title?: string;
+        description?: string;
+      };
 
       // Check if plot exists
       const existing = await db
@@ -651,7 +670,8 @@ export async function registerRoutes(
       // Build update object
       const updates: { title?: string; description?: string } = {};
       if (title && typeof title === "string") updates.title = title.trim();
-      if (description && typeof description === "string") updates.description = description.trim();
+      if (description && typeof description === "string")
+        updates.description = description.trim();
 
       if (Object.keys(updates).length === 0) {
         return res.status(400).json({ error: "No valid fields to update" });
@@ -661,7 +681,11 @@ export async function registerRoutes(
         .update(presetPlots)
         .set(updates)
         .where(eq(presetPlots.id, plotId))
-        .returning({ id: presetPlots.id, title: presetPlots.title, description: presetPlots.description });
+        .returning({
+          id: presetPlots.id,
+          title: presetPlots.title,
+          description: presetPlots.description,
+        });
 
       res.json({
         id: String(result[0].id),
@@ -678,7 +702,7 @@ export async function registerRoutes(
   app.delete("/api/plots/:plotId", requireAdminKey, async (req, res) => {
     try {
       const plotId = parseInt(req.params.plotId, 10);
-      
+
       if (isNaN(plotId)) {
         return res.status(400).json({ error: "Invalid plot ID" });
       }
@@ -1125,13 +1149,14 @@ INSTRUCCIONES:
 Responde SOLO con el texto de tu respuesta, sin formato JSON.`;
 
         const preguntaCompletion = await callOpenAIWithRetry(
-          () => openai.chat.completions.create({
-            model: "gpt-4o",
-            messages: [{ role: "user", content: preguntaPrompt }],
-            max_completion_tokens: 512,
-          }),
+          () =>
+            openai.chat.completions.create({
+              model: "gpt-4o",
+              messages: [{ role: "user", content: preguntaPrompt }],
+              max_completion_tokens: 512,
+            }),
           2,
-          "Pregunta response"
+          "Pregunta response",
         );
 
         const respuesta =
@@ -1223,13 +1248,14 @@ Jugador: "Salto por la ventana del segundo piso"
 VERIFICA: ¿Tu respuesta refleja consecuencias realistas?`;
 
       const completion = await callOpenAIWithRetry(
-        () => openai.chat.completions.create({
-          model: "gpt-4o",
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            {
-              role: "user",
-              content: `CONTEXTO DEL JUEGO:
+        () =>
+          openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: [
+              { role: "system", content: SYSTEM_PROMPT },
+              {
+                role: "user",
+                content: `CONTEXTO DEL JUEGO:
 Nivel de español: ${state.spanishLevel}
 Trama: "${state.plot.titulo}"
 ${progressGuidance}
@@ -1241,12 +1267,12 @@ ${historyContext || "Este es el primer turno del jugador."}
 
 ACCIÓN ACTUAL:
 ${turnMessage}`,
-            },
-          ],
-          max_completion_tokens: 2048,
-        }),
+              },
+            ],
+            max_completion_tokens: 2048,
+          }),
         2,
-        "Turn narration"
+        "Turn narration",
       );
 
       const content = completion.choices[0]?.message?.content || "";
@@ -1267,7 +1293,7 @@ ${turnMessage}`,
         }
       }
 
-      const gameEnded =
+      let gameEnded =
         aiResponse.game_over ||
         aiResponse.final ||
         aiResponse.estado.progreso >= 1.0 ||
@@ -1292,13 +1318,14 @@ INSTRUCCIONES:
 Responde SOLO con el texto de tu retroalimentación.`;
 
           const grammarCompletion = await callOpenAIWithRetry(
-            () => openai.chat.completions.create({
-              model: "gpt-4o",
-              messages: [{ role: "user", content: grammarPrompt }],
-              max_completion_tokens: 256,
-            }),
+            () =>
+              openai.chat.completions.create({
+                model: "gpt-4o",
+                messages: [{ role: "user", content: grammarPrompt }],
+                max_completion_tokens: 256,
+              }),
             1,
-            "Grammar check"
+            "Grammar check",
           );
 
           grammarFeedback =
@@ -1329,6 +1356,9 @@ Responde SOLO con el texto de tu retroalimentación.`;
           Math.min(100, newSalud + aiResponse.cambio_estado.salud_delta),
         );
       }
+
+      const diedFromHealth = newSalud <= 0;
+      if (diedFromHealth) gameEnded = true;
 
       let newEstadoAfectos = [...(dbState.estadoAfectos || [])];
       const cambioEstado = aiResponse.cambio_estado;
@@ -1441,26 +1471,30 @@ Responde SOLO con el texto de tu retroalimentación.`;
       const errorDetails = {
         message: err.message,
         name: err.name,
-        stack: err.stack?.split('\n').slice(0, 5).join('\n'),
+        stack: err.stack?.split("\n").slice(0, 5).join("\n"),
         timestamp: new Date().toISOString(),
       };
-      console.error("[/api/turn] Error:", JSON.stringify(errorDetails, null, 2));
-      
+      console.error(
+        "[/api/turn] Error:",
+        JSON.stringify(errorDetails, null, 2),
+      );
+
       const errAny = error as { status?: number; code?: string };
-      const isOpenAIError = err.name === 'APIError' ||
-                            err.name === 'APIConnectionError' ||
-                            err.name === 'RateLimitError' ||
-                            err.name === 'AuthenticationError' ||
-                            errAny.status === 429 ||
-                            errAny.status === 500 ||
-                            errAny.status === 502 ||
-                            errAny.status === 503 ||
-                            errAny.code === 'ECONNRESET' ||
-                            errAny.code === 'ETIMEDOUT';
-      
-      res.status(500).json({ 
-        error: isOpenAIError 
-          ? "El servicio de IA está temporalmente ocupado. Por favor, intenta de nuevo en unos segundos." 
+      const isOpenAIError =
+        err.name === "APIError" ||
+        err.name === "APIConnectionError" ||
+        err.name === "RateLimitError" ||
+        err.name === "AuthenticationError" ||
+        errAny.status === 429 ||
+        errAny.status === 500 ||
+        errAny.status === 502 ||
+        errAny.status === 503 ||
+        errAny.code === "ECONNRESET" ||
+        errAny.code === "ETIMEDOUT";
+
+      res.status(500).json({
+        error: isOpenAIError
+          ? "El servicio de IA está temporalmente ocupado. Por favor, intenta de nuevo en unos segundos."
           : "Error al procesar el turno",
         retryable: isOpenAIError,
       });
