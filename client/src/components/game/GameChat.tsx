@@ -694,17 +694,14 @@ export function GameChat({
                 </p>
               </div>
             )}
-            <div className="relative">
-              {isMobile && onReplayNarration && gameState.currentNarracion && (
+            {isMobile && onReplayNarration && gameState.currentNarracion && (
+              <div className="flex justify-center mb-3">
                 <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-2 right-2 opacity-60 hover:opacity-100"
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
                   onClick={() => onReplayNarration(gameState.currentNarracion)}
                   disabled={isTTSSpeaking}
-                  title={
-                    isTTSSpeaking ? "Reproduciendo..." : "Escuchar narración"
-                  }
                   data-testid="button-replay-tts-mobile"
                 >
                   {isTTSSpeaking ? (
@@ -712,8 +709,11 @@ export function GameChat({
                   ) : (
                     <Volume2 className="h-4 w-4" />
                   )}
+                  {isTTSSpeaking ? "Reproduciendo..." : "Escuchar narración"}
                 </Button>
-              )}
+              </div>
+            )}
+            <div className="relative">
               <div className="story-text leading-relaxed whitespace-pre-wrap break-words bg-background p-4 rounded-lg border">
                 {gameState.currentNarracion}
               </div>
@@ -727,7 +727,7 @@ export function GameChat({
                   title={
                     isTTSSpeaking ? "Reproduciendo..." : "Escuchar narración"
                   }
-                  data-testid="button-replay-tts-mobile"
+                  data-testid="button-replay-tts-desktop"
                 >
                   {isTTSSpeaking ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
