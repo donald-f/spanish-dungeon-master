@@ -27,6 +27,38 @@ import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { validateNoPII, getPIIErrorMessage } from "@shared/piiValidation";
 
+async function callOpenAIWithRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries = 2,
+  context = "OpenAI call"
+): Promise<T> {
+  let lastError: Error = new Error("Unknown error in OpenAI call");
+  for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+    try {
+      return await fn();
+    } catch (error: unknown) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      const errorDetails = {
+        attempt,
+        context,
+        message: lastError.message,
+        name: lastError.name,
+        status: (error as { status?: number }).status,
+        code: (error as { code?: string }).code,
+        stack: lastError.stack?.split('\n').slice(0, 3).join('\n'),
+      };
+      console.error(`[OpenAI Retry] Attempt ${attempt}/${maxRetries + 1} failed:`, JSON.stringify(errorDetails));
+      
+      if (attempt <= maxRetries) {
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 4000);
+        console.log(`[OpenAI Retry] Waiting ${delay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  throw lastError;
+}
+
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
@@ -1092,11 +1124,15 @@ INSTRUCCIONES:
 
 Responde SOLO con el texto de tu respuesta, sin formato JSON.`;
 
-        const preguntaCompletion = await openai.chat.completions.create({
-          model: "gpt-4o",
-          messages: [{ role: "user", content: preguntaPrompt }],
-          max_completion_tokens: 512,
-        });
+        const preguntaCompletion = await callOpenAIWithRetry(
+          () => openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: [{ role: "user", content: preguntaPrompt }],
+            max_completion_tokens: 512,
+          }),
+          2,
+          "Pregunta response"
+        );
 
         const respuesta =
           preguntaCompletion.choices[0]?.message?.content ||
@@ -1186,13 +1222,14 @@ Jugador: "Salto por la ventana del segundo piso"
 
 VERIFICA: ¿Tu respuesta refleja consecuencias realistas?`;
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          {
-            role: "user",
-            content: `CONTEXTO DEL JUEGO:
+      const completion = await callOpenAIWithRetry(
+        () => openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            {
+              role: "user",
+              content: `CONTEXTO DEL JUEGO:
 Nivel de español: ${state.spanishLevel}
 Trama: "${state.plot.titulo}"
 ${progressGuidance}
@@ -1204,10 +1241,13 @@ ${historyContext || "Este es el primer turno del jugador."}
 
 ACCIÓN ACTUAL:
 ${turnMessage}`,
-          },
-        ],
-        max_completion_tokens: 2048,
-      });
+            },
+          ],
+          max_completion_tokens: 2048,
+        }),
+        2,
+        "Turn narration"
+      );
 
       const content = completion.choices[0]?.message?.content || "";
       const aiResponse = parseAIResponse(content);
@@ -1251,11 +1291,15 @@ INSTRUCCIONES:
 
 Responde SOLO con el texto de tu retroalimentación.`;
 
-          const grammarCompletion = await openai.chat.completions.create({
-            model: "gpt-4o",
-            messages: [{ role: "user", content: grammarPrompt }],
-            max_completion_tokens: 256,
-          });
+          const grammarCompletion = await callOpenAIWithRetry(
+            () => openai.chat.completions.create({
+              model: "gpt-4o",
+              messages: [{ role: "user", content: grammarPrompt }],
+              max_completion_tokens: 256,
+            }),
+            1,
+            "Grammar check"
+          );
 
           grammarFeedback =
             grammarCompletion.choices[0]?.message?.content || undefined;
@@ -1392,9 +1436,34 @@ Responde SOLO con el texto de tu retroalimentación.`;
       };
 
       res.json(response);
-    } catch (error) {
-      console.error("Error in /api/turn:", error);
-      res.status(500).json({ error: "Error al procesar el turno" });
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      const errorDetails = {
+        message: err.message,
+        name: err.name,
+        stack: err.stack?.split('\n').slice(0, 5).join('\n'),
+        timestamp: new Date().toISOString(),
+      };
+      console.error("[/api/turn] Error:", JSON.stringify(errorDetails, null, 2));
+      
+      const errAny = error as { status?: number; code?: string };
+      const isOpenAIError = err.name === 'APIError' ||
+                            err.name === 'APIConnectionError' ||
+                            err.name === 'RateLimitError' ||
+                            err.name === 'AuthenticationError' ||
+                            errAny.status === 429 ||
+                            errAny.status === 500 ||
+                            errAny.status === 502 ||
+                            errAny.status === 503 ||
+                            errAny.code === 'ECONNRESET' ||
+                            errAny.code === 'ETIMEDOUT';
+      
+      res.status(500).json({ 
+        error: isOpenAIError 
+          ? "El servicio de IA está temporalmente ocupado. Por favor, intenta de nuevo en unos segundos." 
+          : "Error al procesar el turno",
+        retryable: isOpenAIError,
+      });
     }
   });
 
