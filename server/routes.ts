@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import OpenAI from "openai";
@@ -26,6 +26,92 @@ import {
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { validateNoPII, getPIIErrorMessage } from "@shared/piiValidation";
+
+// ═══════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════
+
+/** Number of turns before target when story should start heading toward climax */
+const NEAR_END_THRESHOLD = 3;
+
+/** Number of turns at the start that use relaxed danger rules */
+const EARLY_GAME_TURNS = 4;
+
+// ═══════════════════════════════════════
+// VALIDATION SCHEMAS
+// ═══════════════════════════════════════
+
+const startRequestSchema = z.object({
+  spanishLevel: z.enum(["A2", "B1", "B2"]),
+  duration: z.enum(["corta", "media", "larga"]),
+});
+
+const selectPlotRequestSchema = z.object({
+  sessionId: z.string().min(1),
+  plotId: z.string().optional(),
+  spanishLevel: z.enum(["A2", "B1", "B2"]),
+  duration: z.enum(["corta", "media", "larga"]),
+  customTitle: z.string().optional(),
+  customDescription: z.string().optional(),
+});
+
+const turnRequestSchema = z.object({
+  sessionId: z.string().min(1),
+  mode: z.enum(["Acción", "Pregunta"]),
+  userInput: z.string().optional(),
+  selectedOptionId: z.string().optional(),
+  state: z.object({
+    spanishLevel: z.enum(["A2", "B1", "B2"]),
+    turnIndex: z.number(),
+    targetTurns: z.number(),
+    progreso: z.number(),
+    tension: z.number(),
+    plot: z.object({
+      id: z.string(),
+      titulo: z.string(),
+      descripcion: z.string(),
+    }),
+    inventory: z.object({
+      items: z.array(z.string()),
+      pistas: z.array(z.string()),
+    }),
+    resumenMemoria: z.string(),
+    salud: z.number().optional(),
+    estadoAfectos: z.array(z.string()).optional(),
+    banderas: z.array(z.string()).optional(),
+  }),
+  recentHistory: z.array(z.object({
+    turnNumber: z.number(),
+    userInput: z.string(),
+    inputMode: z.enum(["Acción", "Pregunta"]),
+    narracion: z.string(),
+    consecuencia: z.string().optional(),
+  })),
+});
+
+const validateCustomPlotSchema = z.object({
+  title: z.string().min(1).max(200),
+  description: z.string().min(1).max(1000),
+});
+
+const adminPlotSchema = z.object({
+  title: z.string().min(1).max(200),
+  description: z.string().min(1).max(2000),
+});
+
+// ═══════════════════════════════════════
+// UTILITY FUNCTIONS
+// ═══════════════════════════════════════
+
+/** Fisher-Yates shuffle algorithm */
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
 
 async function callOpenAIWithRetry<T>(
   fn: () => Promise<T>,
@@ -261,37 +347,6 @@ Si la aventura tiene villanos o enemigos:
 - Algunos objetos del inventario pueden usarse como armas improvisadas
 - Da pistas sobre la ubicación de armas cuando el peligro se acerca`;
 
-const PLOT_GENERATION_PROMPT = `Genera exactamente 3 ganchos de trama diferentes para una aventura de texto en español con PELIGRO REAL.
-
-NIVEL DE ESPAÑOL: {level}
-DURACIÓN: {duration} ({turns} turnos aproximadamente)
-
-REQUISITOS:
-- Cada trama debe tener peligros reales donde el jugador puede morir o fracasar
-- Incluye elementos que requieran decisiones cuidadosas
-- Mezcla de géneros: misterio, fantasía, aventura, ciencia ficción, histórico
-- Adapta vocabulario al nivel indicado
-
-Responde SOLO con JSON válido:
-{
-  "plots": [
-    {
-      "id": "1",
-      "titulo": "Título corto y atractivo",
-      "descripcion": "Descripción de 2-3 oraciones que presente el escenario y el conflicto inicial. Menciona sutilmente el peligro."
-    },
-    {
-      "id": "2",
-      "titulo": "...",
-      "descripcion": "..."
-    },
-    {
-      "id": "3",
-      "titulo": "...",
-      "descripcion": "..."
-    }
-  ]
-}`;
 
 function isImmediateDangerPlot(plot: {
   titulo: string;
@@ -531,12 +586,7 @@ export async function registerRoutes(
         })
         .from(presetPlots);
 
-      // Shuffle the plots using Fisher-Yates algorithm
-      const shuffled = [...plots];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-      }
+      const shuffled = shuffleArray(plots);
 
       res.json({
         plots: shuffled.map((p) => ({
@@ -552,18 +602,19 @@ export async function registerRoutes(
   });
 
   // Admin middleware for protected endpoints
-  const requireAdminKey = (req: any, res: any, next: any) => {
-    const adminKey = req.headers["x-admin-key"];
+  const requireAdminKey = (req: Request, res: Response, next: NextFunction): void => {
+    const rawKey = req.headers["x-admin-key"];
+    const adminKey = Array.isArray(rawKey) ? rawKey[0] : rawKey;
     const expectedKey = process.env.ADMIN_SECRET;
 
     if (!expectedKey) {
-      return res.status(500).json({ error: "ADMIN_SECRET not configured" });
+      res.status(500).json({ error: "ADMIN_SECRET no está configurado" });
+      return;
     }
 
     if (!adminKey || adminKey !== expectedKey) {
-      return res
-        .status(401)
-        .json({ error: "Unauthorized - Invalid admin key" });
+      res.status(401).json({ error: "No autorizado - clave de administrador inválida" });
+      return;
     }
 
     next();
@@ -572,10 +623,10 @@ export async function registerRoutes(
   // GET /api/plots/:plotId - Get a specific plot (protected)
   app.get("/api/plots/:plotId", requireAdminKey, async (req, res) => {
     try {
-      const plotId = parseInt(req.params.plotId, 10);
+      const plotId = parseInt(req.params.plotId as string, 10);
 
       if (isNaN(plotId)) {
-        return res.status(400).json({ error: "Invalid plot ID" });
+        return res.status(400).json({ error: "ID de trama inválido" });
       }
 
       const plot = await db
@@ -589,7 +640,7 @@ export async function registerRoutes(
         .limit(1);
 
       if (plot.length === 0) {
-        return res.status(404).json({ error: "Plot not found" });
+        return res.status(404).json({ error: "Trama no encontrada" });
       }
 
       res.json({
@@ -599,28 +650,21 @@ export async function registerRoutes(
       });
     } catch (error) {
       console.error("Error in GET /api/plots/:plotId:", error);
-      res.status(500).json({ error: "Error fetching plot" });
+      res.status(500).json({ error: "Error al obtener la trama" });
     }
   });
 
   // POST /api/plots - Create a new plot (protected)
   app.post("/api/plots", requireAdminKey, async (req, res) => {
     try {
-      const { title, description } = req.body as {
-        title: string;
-        description: string;
-      };
-
-      if (!title || typeof title !== "string" || title.trim().length === 0) {
-        return res.status(400).json({ error: "Title is required" });
+      const parseResult = adminPlotSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          error: "Datos inválidos", 
+          details: parseResult.error.flatten().fieldErrors 
+        });
       }
-      if (
-        !description ||
-        typeof description !== "string" ||
-        description.trim().length === 0
-      ) {
-        return res.status(400).json({ error: "Description is required" });
-      }
+      const { title, description } = parseResult.data;
 
       const result = await db
         .insert(presetPlots)
@@ -638,23 +682,32 @@ export async function registerRoutes(
       });
     } catch (error) {
       console.error("Error in POST /api/plots:", error);
-      res.status(500).json({ error: "Error creating plot" });
+      res.status(500).json({ error: "Error al crear la trama" });
     }
   });
 
   // PATCH /api/plots/:plotId - Update a plot (protected)
   app.patch("/api/plots/:plotId", requireAdminKey, async (req, res) => {
     try {
-      const plotId = parseInt(req.params.plotId, 10);
+      const plotId = parseInt(req.params.plotId as string, 10);
 
       if (isNaN(plotId)) {
-        return res.status(400).json({ error: "Invalid plot ID" });
+        return res.status(400).json({ error: "ID de trama inválido" });
       }
 
-      const { title, description } = req.body as {
-        title?: string;
-        description?: string;
-      };
+      const partialPlotSchema = z.object({
+        title: z.string().min(1).max(200).optional(),
+        description: z.string().min(1).max(2000).optional(),
+      });
+      
+      const parseResult = partialPlotSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          error: "Datos inválidos", 
+          details: parseResult.error.flatten().fieldErrors 
+        });
+      }
+      const { title, description } = parseResult.data;
 
       // Check if plot exists
       const existing = await db
@@ -664,17 +717,16 @@ export async function registerRoutes(
         .limit(1);
 
       if (existing.length === 0) {
-        return res.status(404).json({ error: "Plot not found" });
+        return res.status(404).json({ error: "Trama no encontrada" });
       }
 
       // Build update object
       const updates: { title?: string; description?: string } = {};
-      if (title && typeof title === "string") updates.title = title.trim();
-      if (description && typeof description === "string")
-        updates.description = description.trim();
+      if (title) updates.title = title.trim();
+      if (description) updates.description = description.trim();
 
       if (Object.keys(updates).length === 0) {
-        return res.status(400).json({ error: "No valid fields to update" });
+        return res.status(400).json({ error: "No hay campos válidos para actualizar" });
       }
 
       const result = await db
@@ -694,17 +746,17 @@ export async function registerRoutes(
       });
     } catch (error) {
       console.error("Error in PATCH /api/plots/:plotId:", error);
-      res.status(500).json({ error: "Error updating plot" });
+      res.status(500).json({ error: "Error al actualizar la trama" });
     }
   });
 
   // DELETE /api/plots/:plotId - Delete a plot (protected)
   app.delete("/api/plots/:plotId", requireAdminKey, async (req, res) => {
     try {
-      const plotId = parseInt(req.params.plotId, 10);
+      const plotId = parseInt(req.params.plotId as string, 10);
 
       if (isNaN(plotId)) {
-        return res.status(400).json({ error: "Invalid plot ID" });
+        return res.status(400).json({ error: "ID de trama inválido" });
       }
 
       // Check if plot exists
@@ -715,7 +767,7 @@ export async function registerRoutes(
         .limit(1);
 
       if (existing.length === 0) {
-        return res.status(404).json({ error: "Plot not found" });
+        return res.status(404).json({ error: "Trama no encontrada" });
       }
 
       await db.delete(presetPlots).where(eq(presetPlots.id, plotId));
@@ -723,7 +775,7 @@ export async function registerRoutes(
       res.json({ success: true, deletedId: String(plotId) });
     } catch (error) {
       console.error("Error in DELETE /api/plots/:plotId:", error);
-      res.status(500).json({ error: "Error deleting plot" });
+      res.status(500).json({ error: "Error al eliminar la trama" });
     }
   });
 
@@ -844,7 +896,14 @@ Responde con JSON: { "approved": true/false, "reason": "explicación breve si no
 
   app.post("/api/start", async (req, res) => {
     try {
-      const { spanishLevel, duration } = req.body as StartRequest;
+      const parseResult = startRequestSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          error: "Datos inválidos", 
+          details: parseResult.error.flatten().fieldErrors 
+        });
+      }
+      const { spanishLevel, duration } = parseResult.data;
 
       const targetTurns = durationToTurns[duration];
       const remaining = await getTurnsRemaining();
@@ -910,6 +969,13 @@ Responde con JSON: { "approved": true/false, "reason": "explicación breve si no
 
   app.post("/api/select-plot", async (req, res) => {
     try {
+      const parseResult = selectPlotRequestSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          error: "Datos inválidos", 
+          details: parseResult.error.flatten().fieldErrors 
+        });
+      }
       const {
         sessionId,
         plotId,
@@ -917,7 +983,7 @@ Responde con JSON: { "approved": true/false, "reason": "explicación breve si no
         duration,
         customTitle,
         customDescription,
-      } = req.body as SelectPlotRequest;
+      } = parseResult.data;
 
       const session = await storage.getSession(sessionId);
       if (!session) {
@@ -932,7 +998,7 @@ Responde con JSON: { "approved": true/false, "reason": "explicación breve si no
           titulo: customTitle,
           descripcion: customDescription,
         };
-      } else {
+      } else if (plotId) {
         // Look up plot from database instead of session
         const dbPlot = await db
           .select()
@@ -949,6 +1015,8 @@ Responde con JSON: { "approved": true/false, "reason": "explicación breve si no
           titulo: dbPlot[0].title,
           descripcion: dbPlot[0].description,
         };
+      } else {
+        return res.status(400).json({ error: "Se requiere un plotId o una trama personalizada" });
       }
 
       const targetTurns = durationToTurns[duration];
@@ -1044,6 +1112,13 @@ Indica el nivel de peligro inicial de la situación.`,
 
   app.post("/api/turn", async (req, res) => {
     try {
+      const parseResult = turnRequestSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          error: "Datos inválidos", 
+          details: parseResult.error.flatten().fieldErrors 
+        });
+      }
       const {
         sessionId,
         mode,
@@ -1051,7 +1126,7 @@ Indica el nivel de peligro inicial de la situación.`,
         selectedOptionId,
         state,
         recentHistory,
-      } = req.body as TurnRequest;
+      } = parseResult.data;
 
       // PII validation for user input
       if (userInput) {
@@ -1091,17 +1166,19 @@ Indica el nivel de peligro inicial de la situación.`,
           ? `Inventario actual: ${state.inventory.items.join(", ")}`
           : "Inventario vacío";
 
+      const estadoAfectos = state.estadoAfectos ?? [];
       const estadoStr =
-        state.estadoAfectos?.length > 0
-          ? `Estados de afecto: ${state.estadoAfectos.join(", ")}`
+        estadoAfectos.length > 0
+          ? `Estados de afecto: ${estadoAfectos.join(", ")}`
           : "Sin estados de afecto";
 
+      const banderas = state.banderas ?? [];
       const banderasStr =
-        state.banderas?.length > 0
-          ? `Banderas activas: ${state.banderas.join(", ")}`
+        banderas.length > 0
+          ? `Banderas activas: ${banderas.join(", ")}`
           : "Sin banderas";
 
-      const isNearEnd = state.turnIndex >= state.targetTurns - 3;
+      const isNearEnd = state.turnIndex >= state.targetTurns - NEAR_END_THRESHOLD;
       const isAtEnd = state.turnIndex >= state.targetTurns;
 
       let progressGuidance = "";
@@ -1115,7 +1192,7 @@ Indica el nivel de peligro inicial de la situación.`,
         progressGuidance = `Turno ${state.turnIndex + 1} de ${state.targetTurns}. Progreso esperado: ~${expectedProgress.toFixed(2)}.`;
       }
 
-      const isEarlyGame = state.turnIndex < 4;
+      const isEarlyGame = state.turnIndex < EARLY_GAME_TURNS;
       const immediateDangerPlot = isImmediateDangerPlot(state.plot);
       let earlyGameGuidance = "";
       if (isEarlyGame && !immediateDangerPlot) {
