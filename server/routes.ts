@@ -37,6 +37,19 @@ const NEAR_END_THRESHOLD = 3;
 /** Number of turns at the start that use relaxed danger rules */
 const EARLY_GAME_TURNS = 4;
 
+/**
+ * Turn counts are a pacing guide, NOT a hard stop.
+ * We allow a grace window so the story can conclude properly.
+ */
+const EXTRA_TURNS_BY_DURATION: Record<"corta" | "media" | "larga", number> = {
+  corta: 6,
+  media: 8,
+  larga: 10,
+};
+
+/** If the model still hasn't ended by the last grace turn, we force a conclusion. */
+const FORCE_END_BUFFER_TURNS = 1;
+
 // ═══════════════════════════════════════
 // VALIDATION SCHEMAS
 // ═══════════════════════════════════════
@@ -368,6 +381,16 @@ function isImmediateDangerPlot(plot: {
   ];
 
   return dangerPatterns.some((re) => re.test(text));
+}
+
+function getHardEndTurn(targetTurns: number, duration: "corta" | "media" | "larga"): number {
+  const grace = EXTRA_TURNS_BY_DURATION[duration] ?? 6;
+  return targetTurns + grace + FORCE_END_BUFFER_TURNS;
+}
+
+function getSoftEndTurn(targetTurns: number, duration: "corta" | "media" | "larga"): number {
+  const grace = EXTRA_TURNS_BY_DURATION[duration] ?? 6;
+  return targetTurns + grace;
 }
 
 function countRecentTextLock(banderas: string[] | undefined): number {
@@ -1164,6 +1187,11 @@ Indica el nivel de peligro inicial de la situación.`,
         return res.status(404).json({ error: "Sesión no encontrada" });
       }
 
+      const dbState = session.gameState;
+      if (!dbState) {
+        return res.status(404).json({ error: "Estado de juego no encontrado" });
+      }
+
       const playerAction = userInput || `Opción ${selectedOptionId}`;
 
       const historyContext = recentHistory
@@ -1190,21 +1218,29 @@ Indica el nivel de peligro inicial de la situación.`,
           ? `Banderas activas: ${banderas.join(", ")}`
           : "Sin banderas";
 
-      const isNearEnd = state.turnIndex >= state.targetTurns - NEAR_END_THRESHOLD;
-      const isAtEnd = state.turnIndex >= state.targetTurns;
+      // Authoritative pacing should use DB state (client can be stale).
+      const duration = dbState.duration;
+      const softEndTurn = getSoftEndTurn(dbState.targetTurns, duration);
+      const hardEndTurn = getHardEndTurn(dbState.targetTurns, duration);
+      const nextTurnNumber = dbState.turnIndex + 1;
+
+      const isNearEnd = nextTurnNumber >= dbState.targetTurns - NEAR_END_THRESHOLD;
+      const isInOvertime = nextTurnNumber >= dbState.targetTurns;
+      const mustEndNow = nextTurnNumber >= hardEndTurn;
 
       let progressGuidance = "";
-      if (isAtEnd) {
-        progressGuidance =
-          "Este es el turno FINAL. Debes concluir la historia. Si el jugador ha tenido éxito, final=true. Si ha fracasado, game_over=true.";
+      if (mustEndNow) {
+        progressGuidance = `TIEMPO AGOTADO (turno ${nextTurnNumber}): Debes concluir la historia AHORA. Si el jugador ha tenido éxito, final=true. Si ha fracasado, game_over=true. Opciones debe ser [].`;
+      } else if (nextTurnNumber >= softEndTurn) {
+        progressGuidance = `TIEMPO EXTRA (turno ${nextTurnNumber}): La aventura ya sobrepasó el objetivo de ${dbState.targetTurns} turnos. Concluye en ESTE turno o como máximo en 1 turno más (usa final=true o game_over=true).`;
       } else if (isNearEnd) {
-        progressGuidance = `Estamos cerca del final (turno ${state.turnIndex + 1} de ${state.targetTurns}). Lleva la historia hacia su clímax.`;
+        progressGuidance = `Estamos cerca del final (turno ${nextTurnNumber} de ${dbState.targetTurns}). Lleva la historia hacia su clímax y prepara una conclusión.`;
       } else {
-        const expectedProgress = (state.turnIndex + 1) / state.targetTurns;
-        progressGuidance = `Turno ${state.turnIndex + 1} de ${state.targetTurns}. Progreso esperado: ~${expectedProgress.toFixed(2)}.`;
+        const expectedProgress = nextTurnNumber / dbState.targetTurns;
+        progressGuidance = `Turno ${nextTurnNumber} de ${dbState.targetTurns}. Progreso esperado: ~${expectedProgress.toFixed(2)}.`;
       }
 
-      const isEarlyGame = state.turnIndex < EARLY_GAME_TURNS;
+      const isEarlyGame = nextTurnNumber <= EARLY_GAME_TURNS;
       const immediateDangerPlot = isImmediateDangerPlot(state.plot);
       let earlyGameGuidance = "";
       if (isEarlyGame && !immediateDangerPlot) {
@@ -1367,6 +1403,52 @@ ${turnMessage}`,
       const content = completion.choices[0]?.message?.content || "";
       const aiResponse = parseAIResponse(content);
 
+      // If we've hit the hard cap and the model didn't end, force a conclusion with a second call.
+      if (mustEndNow && !aiResponse.final && !aiResponse.game_over) {
+        const forced = await callOpenAIWithRetry(
+          () =>
+            openai.chat.completions.create({
+              model: "gpt-4o",
+              messages: [
+                { role: "system", content: SYSTEM_PROMPT },
+                {
+                  role: "user",
+                  content: `FORZAR CONCLUSIÓN INMEDIATA.
+
+Resumen de la historia: ${state.resumenMemoria}
+Acción actual del jugador: "${playerAction}"
+
+INSTRUCCIÓN: Devuelve SOLO JSON válido con final=true o game_over=true (uno de los dos). Opciones debe ser []. Incluye final_razon o game_over_razon y un resumen_aprendizajes breve.`,
+                },
+              ],
+              max_completion_tokens: 900,
+            }),
+          1,
+          "Force conclusion",
+        );
+
+        const forcedContent = forced.choices[0]?.message?.content || "";
+        const forcedAi = parseAIResponse(forcedContent);
+        // Replace only if it actually ended.
+        if (forcedAi.final || forcedAi.game_over) {
+          (aiResponse as any).narracion = forcedAi.narracion;
+          (aiResponse as any).opciones = [];
+          (aiResponse as any).permitir_texto_libre = false;
+          (aiResponse as any).permitir_preguntas = forcedAi.permitir_preguntas;
+          (aiResponse as any).inventario = forcedAi.inventario;
+          (aiResponse as any).estado = forcedAi.estado;
+          (aiResponse as any).resumen_memoria = forcedAi.resumen_memoria;
+          (aiResponse as any).consecuencia = forcedAi.consecuencia;
+          (aiResponse as any).peligro = forcedAi.peligro;
+          (aiResponse as any).cambio_estado = forcedAi.cambio_estado;
+          (aiResponse as any).game_over = forcedAi.game_over;
+          (aiResponse as any).game_over_razon = forcedAi.game_over_razon;
+          (aiResponse as any).final = forcedAi.final;
+          (aiResponse as any).final_razon = forcedAi.final_razon;
+          (aiResponse as any).resumen_aprendizajes = forcedAi.resumen_aprendizajes;
+        }
+      }
+
       // --- Controlled use of permitir_texto_libre (sparingly) ---
       // Enforce: don't keep free text locked multiple turns in a row.
       // If the AI tries to lock again consecutively, override back to true (keep options to steer).
@@ -1385,8 +1467,7 @@ ${turnMessage}`,
       let gameEnded =
         aiResponse.game_over ||
         aiResponse.final ||
-        aiResponse.estado.progreso >= 1.0 ||
-        state.turnIndex >= state.targetTurns;
+        aiResponse.estado.progreso >= 1.0;
 
       let grammarFeedback: string | undefined;
       let grammarCorrection: string | undefined;
@@ -1435,9 +1516,6 @@ Responde SOLO con el texto de tu retroalimentación.`;
 
       await incrementTurnCount(1);
 
-      // Update game state in database - use session.gameState from DB as authoritative source
-      const dbState = session.gameState!;
-
       let newSalud = dbState.salud ?? 100;
       if (aiResponse.cambio_estado?.salud_delta) {
         newSalud = Math.max(
@@ -1448,6 +1526,11 @@ Responde SOLO con el texto de tu retroalimentación.`;
 
       const diedFromHealth = newSalud <= 0;
       if (diedFromHealth) gameEnded = true;
+
+      // Hard cap guardrail: if we still somehow didn't end, end the session anyway.
+      if (!gameEnded && nextTurnNumber >= hardEndTurn) {
+        gameEnded = true;
+      }
 
       let newEstadoAfectos = [...(dbState.estadoAfectos || [])];
       const cambioEstado = aiResponse.cambio_estado;
@@ -1519,7 +1602,7 @@ Responde SOLO con el texto de tu retroalimentación.`;
       const updatedGameState = {
         ...dbState,
         sessionId,
-        turnIndex: dbState.turnIndex + 1,
+        turnIndex: nextTurnNumber,
         salud: newSalud,
         estadoAfectos: newEstadoAfectos,
         banderas: newBanderas,
@@ -1528,12 +1611,15 @@ Responde SOLO con el texto de tu retroalimentación.`;
         currentOptions: aiResponse.opciones,
         permitirTextoLibre: aiResponse.permitir_texto_libre,
         permitirPreguntas: aiResponse.permitir_preguntas,
-        peligro: aiResponse.peligro,
+        currentPeligro: aiResponse.peligro,
+        currentConsecuencia: aiResponse.consecuencia,
         pistaProfesor: aiResponse.pista_profesor,
-        consecuencia: aiResponse.consecuencia,
         resumenMemoria: aiResponse.resumen_memoria || dbState.resumenMemoria,
         progreso: aiResponse.estado?.progreso ?? dbState.progreso ?? 0,
         tension: aiResponse.estado?.tension ?? dbState.tension ?? 0,
+        gameEnded,
+        gameOverRazon: aiResponse.game_over ? aiResponse.game_over_razon : undefined,
+        finalRazon: aiResponse.final ? aiResponse.final_razon : undefined,
         history: newHistory,
         resumenAprendizajes: mergeLearningSummaries(
           dbState.resumenAprendizajes,
@@ -1541,6 +1627,13 @@ Responde SOLO con el texto de tu retroalimentación.`;
           grammarCorrection,
         ),
       };
+
+      // Ensure we always have a learning summary on actual end.
+      if (gameEnded && !updatedGameState.resumenAprendizajes) {
+        updatedGameState.resumenAprendizajes = generateLearningSummary(
+          updatedGameState.learningLog || [],
+        );
+      }
 
       await storage.updateSession(sessionId, {
         gameState: updatedGameState,
