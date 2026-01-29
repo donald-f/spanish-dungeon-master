@@ -93,13 +93,15 @@ const turnRequestSchema = z.object({
     estadoAfectos: z.array(z.string()).optional(),
     banderas: z.array(z.string()).optional(),
   }),
-  recentHistory: z.array(z.object({
-    turnNumber: z.number(),
-    userInput: z.string(),
-    inputMode: z.enum(["Acción", "Pregunta"]),
-    narracion: z.string(),
-    consecuencia: z.string().optional(),
-  })),
+  recentHistory: z.array(
+    z.object({
+      turnNumber: z.number(),
+      userInput: z.string(),
+      inputMode: z.enum(["Acción", "Pregunta"]),
+      narracion: z.string(),
+      consecuencia: z.string().optional(),
+    }),
+  ),
 });
 
 const validateCustomPlotSchema = z.object({
@@ -203,6 +205,25 @@ PRINCIPIOS FUNDAMENTALES
  - La historia debe avanzar hacia un clímax según la duración elegida
  - Mantén tensión y ritmo apropiados
  - No te estanques en detalles irrelevantes
+
+═══════════════════════════════════════
+FASE FINAL (AUTO-ORGANIZACIÓN DEL CIERRE)
+═══════════════════════════════════════
+
+CUANDO el contexto indique que estás CERCA DEL FINAL o en TIEMPO EXTRA (por ejemplo, el usuario te dice
+“Estamos cerca del final” / “Turno X de Y” / “TIEMPO EXTRA” / “TIEMPO AGOTADO”):
+
+ANTES de escribir el JSON definitivo, haz este plan de forma INTERNA (NO lo imprimas, no lo incluyas en el JSON):
+
+A) “Qué debe resolverse en 1-2 turnos”
+   - Identifica 1-3 hilos principales que NO pueden quedar colgando (objetivo, villano, verdad central, rescate, escape, etc.).
+B) “Qué puede quedar sin resolver” (si aplica)
+   - Elige 0-2 misterios secundarios que pueden quedar abiertos sin frustrar (ganchos de campaña, pistas futuras).
+C) “Nota emocional del final”
+   - Decide el tono final: victoria heroica, sacrificio, alivio tenso, bittersweet, terror sobrevivido, justicia poética, etc.
+
+Luego escribe el JSON de ese turno asegurando que la narración y consecuencias AVANCEN esa resolución
+(de forma clara y satisfactoria), y que el juego termine con final=true o game_over=true cuando corresponda.
 
 ═══════════════════════════════════════
 REGLAS DE RESPUESTA
@@ -360,7 +381,6 @@ Si la aventura tiene villanos o enemigos:
 - Algunos objetos del inventario pueden usarse como armas improvisadas
 - Da pistas sobre la ubicación de armas cuando el peligro se acerca`;
 
-
 function isImmediateDangerPlot(plot: {
   titulo: string;
   descripcion: string;
@@ -383,12 +403,18 @@ function isImmediateDangerPlot(plot: {
   return dangerPatterns.some((re) => re.test(text));
 }
 
-function getHardEndTurn(targetTurns: number, duration: "corta" | "media" | "larga"): number {
+function getHardEndTurn(
+  targetTurns: number,
+  duration: "corta" | "media" | "larga",
+): number {
   const grace = EXTRA_TURNS_BY_DURATION[duration] ?? 6;
   return targetTurns + grace + FORCE_END_BUFFER_TURNS;
 }
 
-function getSoftEndTurn(targetTurns: number, duration: "corta" | "media" | "larga"): number {
+function getSoftEndTurn(
+  targetTurns: number,
+  duration: "corta" | "media" | "larga",
+): number {
   const grace = EXTRA_TURNS_BY_DURATION[duration] ?? 6;
   return targetTurns + grace;
 }
@@ -420,23 +446,25 @@ function setTextLockCount(banderas: string[], n: number): string[] {
 function sanitizeJsonString(jsonStr: string): string {
   // Replace control characters within JSON string values
   // This regex matches content between quotes and escapes control chars
-  return jsonStr.replace(
-    /"(?:[^"\\]|\\.)*"/g,
-    (match) => {
-      return match
-        .replace(/[\x00-\x1F]/g, (char) => {
-          // Convert control characters to their escaped equivalents
-          switch (char) {
-            case '\n': return '\\n';
-            case '\r': return '\\r';
-            case '\t': return '\\t';
-            case '\b': return '\\b';
-            case '\f': return '\\f';
-            default: return ''; // Remove other control characters
-          }
-        });
-    }
-  );
+  return jsonStr.replace(/"(?:[^"\\]|\\.)*"/g, (match) => {
+    return match.replace(/[\x00-\x1F]/g, (char) => {
+      // Convert control characters to their escaped equivalents
+      switch (char) {
+        case "\n":
+          return "\\n";
+        case "\r":
+          return "\\r";
+        case "\t":
+          return "\\t";
+        case "\b":
+          return "\\b";
+        case "\f":
+          return "\\f";
+        default:
+          return ""; // Remove other control characters
+      }
+    });
+  });
 }
 
 function parseAIResponse(content: string): AIResponse {
@@ -445,39 +473,41 @@ function parseAIResponse(content: string): AIResponse {
     .replace(/```\n?/g, "")
     .trim();
   const sanitized = sanitizeJsonString(cleaned);
-  
+
   let parsed: any;
   try {
     parsed = JSON.parse(sanitized);
   } catch (firstError) {
     // Try to repair truncated JSON by closing open brackets/braces
     let repaired = sanitized;
-    
+
     // Count open brackets and braces
     const openBraces = (repaired.match(/{/g) || []).length;
     const closeBraces = (repaired.match(/}/g) || []).length;
     const openBrackets = (repaired.match(/\[/g) || []).length;
     const closeBrackets = (repaired.match(/\]/g) || []).length;
-    
+
     // Remove trailing incomplete content (after last complete value)
-    repaired = repaired.replace(/,\s*$/, '');
-    repaired = repaired.replace(/,\s*"[^"]*$/, '');
+    repaired = repaired.replace(/,\s*$/, "");
+    repaired = repaired.replace(/,\s*"[^"]*$/, "");
     repaired = repaired.replace(/:\s*"[^"]*$/, ': ""');
-    repaired = repaired.replace(/:\s*$/, ': null');
-    
+    repaired = repaired.replace(/:\s*$/, ": null");
+
     // Close unclosed brackets and braces
     for (let i = 0; i < openBrackets - closeBrackets; i++) {
-      repaired += ']';
+      repaired += "]";
     }
     for (let i = 0; i < openBraces - closeBraces; i++) {
-      repaired += '}';
+      repaired += "}";
     }
-    
+
     try {
       parsed = JSON.parse(repaired);
-      console.log('[parseAIResponse] Repaired truncated JSON successfully');
+      console.log("[parseAIResponse] Repaired truncated JSON successfully");
     } catch (secondError) {
-      console.error('[parseAIResponse] JSON repair failed, throwing original error');
+      console.error(
+        "[parseAIResponse] JSON repair failed, throwing original error",
+      );
       throw firstError;
     }
   }
@@ -688,7 +718,11 @@ export async function registerRoutes(
   });
 
   // Admin middleware for protected endpoints
-  const requireAdminKey = (req: Request, res: Response, next: NextFunction): void => {
+  const requireAdminKey = (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): void => {
     const rawKey = req.headers["x-admin-key"];
     const adminKey = Array.isArray(rawKey) ? rawKey[0] : rawKey;
     const expectedKey = process.env.ADMIN_SECRET;
@@ -699,7 +733,9 @@ export async function registerRoutes(
     }
 
     if (!adminKey || adminKey !== expectedKey) {
-      res.status(401).json({ error: "No autorizado - clave de administrador inválida" });
+      res
+        .status(401)
+        .json({ error: "No autorizado - clave de administrador inválida" });
       return;
     }
 
@@ -745,9 +781,9 @@ export async function registerRoutes(
     try {
       const parseResult = adminPlotSchema.safeParse(req.body);
       if (!parseResult.success) {
-        return res.status(400).json({ 
-          error: "Datos inválidos", 
-          details: parseResult.error.flatten().fieldErrors 
+        return res.status(400).json({
+          error: "Datos inválidos",
+          details: parseResult.error.flatten().fieldErrors,
         });
       }
       const { title, description } = parseResult.data;
@@ -785,12 +821,12 @@ export async function registerRoutes(
         title: z.string().min(1).max(200).optional(),
         description: z.string().min(1).max(2000).optional(),
       });
-      
+
       const parseResult = partialPlotSchema.safeParse(req.body);
       if (!parseResult.success) {
-        return res.status(400).json({ 
-          error: "Datos inválidos", 
-          details: parseResult.error.flatten().fieldErrors 
+        return res.status(400).json({
+          error: "Datos inválidos",
+          details: parseResult.error.flatten().fieldErrors,
         });
       }
       const { title, description } = parseResult.data;
@@ -812,7 +848,9 @@ export async function registerRoutes(
       if (description) updates.description = description.trim();
 
       if (Object.keys(updates).length === 0) {
-        return res.status(400).json({ error: "No hay campos válidos para actualizar" });
+        return res
+          .status(400)
+          .json({ error: "No hay campos válidos para actualizar" });
       }
 
       const result = await db
@@ -871,7 +909,8 @@ export async function registerRoutes(
       const parseResult = validateCustomPlotSchema.safeParse(req.body);
       if (!parseResult.success) {
         const errors = parseResult.error.flatten().fieldErrors;
-        const errorMsg = errors.title?.[0] || errors.description?.[0] || "Datos inválidos";
+        const errorMsg =
+          errors.title?.[0] || errors.description?.[0] || "Datos inválidos";
         return res.status(400).json({
           valid: false,
           error: errorMsg,
@@ -973,9 +1012,9 @@ Responde con JSON: { "approved": true/false, "reason": "explicación breve si no
     try {
       const parseResult = startRequestSchema.safeParse(req.body);
       if (!parseResult.success) {
-        return res.status(400).json({ 
-          error: "Datos inválidos", 
-          details: parseResult.error.flatten().fieldErrors 
+        return res.status(400).json({
+          error: "Datos inválidos",
+          details: parseResult.error.flatten().fieldErrors,
         });
       }
       const { spanishLevel, duration } = parseResult.data;
@@ -1041,9 +1080,9 @@ Responde con JSON: { "approved": true/false, "reason": "explicación breve si no
     try {
       const parseResult = selectPlotRequestSchema.safeParse(req.body);
       if (!parseResult.success) {
-        return res.status(400).json({ 
-          error: "Datos inválidos", 
-          details: parseResult.error.flatten().fieldErrors 
+        return res.status(400).json({
+          error: "Datos inválidos",
+          details: parseResult.error.flatten().fieldErrors,
         });
       }
       const {
@@ -1086,7 +1125,9 @@ Responde con JSON: { "approved": true/false, "reason": "explicación breve si no
           descripcion: dbPlot[0].description,
         };
       } else {
-        return res.status(400).json({ error: "Se requiere un plotId o una trama personalizada" });
+        return res
+          .status(400)
+          .json({ error: "Se requiere un plotId o una trama personalizada" });
       }
 
       const targetTurns = durationToTurns[duration];
@@ -1184,9 +1225,9 @@ Indica el nivel de peligro inicial de la situación.`,
     try {
       const parseResult = turnRequestSchema.safeParse(req.body);
       if (!parseResult.success) {
-        return res.status(400).json({ 
-          error: "Datos inválidos", 
-          details: parseResult.error.flatten().fieldErrors 
+        return res.status(400).json({
+          error: "Datos inválidos",
+          details: parseResult.error.flatten().fieldErrors,
         });
       }
       const {
@@ -1259,7 +1300,8 @@ Indica el nivel de peligro inicial de la situación.`,
       const hardEndTurn = getHardEndTurn(dbState.targetTurns, duration);
       const nextTurnNumber = dbState.turnIndex + 1;
 
-      const isNearEnd = nextTurnNumber >= dbState.targetTurns - NEAR_END_THRESHOLD;
+      const isNearEnd =
+        nextTurnNumber >= dbState.targetTurns - NEAR_END_THRESHOLD;
       const isInOvertime = nextTurnNumber >= dbState.targetTurns;
       const mustEndNow = nextTurnNumber >= hardEndTurn;
 
@@ -1480,7 +1522,8 @@ INSTRUCCIÓN: Devuelve SOLO JSON válido con final=true o game_over=true (uno de
           (aiResponse as any).game_over_razon = forcedAi.game_over_razon;
           (aiResponse as any).final = forcedAi.final;
           (aiResponse as any).final_razon = forcedAi.final_razon;
-          (aiResponse as any).resumen_aprendizajes = forcedAi.resumen_aprendizajes;
+          (aiResponse as any).resumen_aprendizajes =
+            forcedAi.resumen_aprendizajes;
         }
       }
 
@@ -1653,7 +1696,9 @@ Responde SOLO con el texto de tu retroalimentación.`;
         progreso: aiResponse.estado?.progreso ?? dbState.progreso ?? 0,
         tension: aiResponse.estado?.tension ?? dbState.tension ?? 0,
         gameEnded,
-        gameOverRazon: aiResponse.game_over ? aiResponse.game_over_razon : undefined,
+        gameOverRazon: aiResponse.game_over
+          ? aiResponse.game_over_razon
+          : undefined,
         finalRazon: aiResponse.final ? aiResponse.final_razon : undefined,
         history: newHistory,
         resumenAprendizajes: mergeLearningSummaries(
