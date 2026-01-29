@@ -30,6 +30,7 @@ import {
   BookOpen,
   Volume2,
   Loader2,
+  Square,
 } from "lucide-react";
 import type {
   GameState,
@@ -59,6 +60,7 @@ interface GameChatProps {
   onDismissGrammarFeedback?: () => void;
   onSpeakNarration?: (text: string) => void;
   onReplayNarration?: (text: string) => void;
+  onStopNarration?: () => void;
   pendingNarration?: string | null;
   isTTSSpeaking?: boolean;
   isTTSReady?: boolean;
@@ -201,6 +203,7 @@ export function GameChat({
   onDismissGrammarFeedback,
   onSpeakNarration,
   onReplayNarration,
+  onStopNarration,
   pendingNarration,
   isTTSSpeaking,
   isTTSReady,
@@ -332,7 +335,6 @@ export function GameChat({
     setShowNarrationModal(false);
   };
 
-  
   const canPrefillActionTextarea =
     inputMode !== "Pregunta" && gameState.permitirTextoLibre;
 
@@ -606,6 +608,11 @@ export function GameChat({
                   }}
                   disabled={isLoading}
                   data-testid={`button-option-${option.id}`}
+                  style={{
+                    WebkitUserSelect: "none",
+                    userSelect: "none",
+                    WebkitTouchCallout: "none",
+                  }}
                 >
                   <Badge variant="secondary" className="mr-2 shrink-0">
                     {option.id}
@@ -756,21 +763,29 @@ export function GameChat({
             )}
             {isMobile && onReplayNarration && gameState.currentNarracion && (
               <div className="flex justify-center mb-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                  onClick={() => onReplayNarration(gameState.currentNarracion)}
-                  disabled={isTTSSpeaking}
-                  data-testid="button-replay-tts-mobile"
-                >
-                  {isTTSSpeaking ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
+                {isTTSSpeaking && onStopNarration ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={onStopNarration}
+                    data-testid="button-stop-tts-mobile"
+                  >
+                    <Square className="h-4 w-4" />
+                    Detener
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => onReplayNarration(gameState.currentNarracion)}
+                    data-testid="button-replay-tts-mobile"
+                  >
                     <Volume2 className="h-4 w-4" />
-                  )}
-                  {isTTSSpeaking ? "Reproduciendo..." : "Escuchar narración"}
-                </Button>
+                    Escuchar narración
+                  </Button>
+                )}
               </div>
             )}
             <div className="relative">

@@ -739,6 +739,7 @@ export default function Game() {
                 }}
                 onSpeakNarration={speakNarration}
                 onReplayNarration={handleManualSpeak}
+                onStopNarration={stopTTS}
                 pendingNarration={pendingNarration}
                 isTTSSpeaking={isTTSSpeaking}
                 isTTSReady={isTTSReady}
