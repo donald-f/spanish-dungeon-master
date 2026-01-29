@@ -30,6 +30,7 @@ export function useTTS(options: UseTTSOptions = {}) {
   const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
   const isWarmedUpRef = useRef(false);
   const resumeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const abortRef = useRef(false);
   
   const [state, setState] = useState<TTSState>({
     isSpeaking: false,
@@ -69,6 +70,7 @@ export function useTTS(options: UseTTSOptions = {}) {
   }, []);
 
   const stop = useCallback(() => {
+    abortRef.current = true;
     if (window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
@@ -149,6 +151,7 @@ export function useTTS(options: UseTTSOptions = {}) {
       }
 
       stop();
+      abortRef.current = false;
       setState(prev => ({ ...prev, isSpeaking: true, error: null }));
 
       if (!isWarmedUpRef.current) {
@@ -182,6 +185,7 @@ export function useTTS(options: UseTTSOptions = {}) {
           if (currentChunk) chunks.push(currentChunk.trim());
 
           for (const chunk of chunks) {
+            if (abortRef.current) break;
             await speakChunk(chunk, voice);
           }
         } else {
