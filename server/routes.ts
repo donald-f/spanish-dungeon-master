@@ -676,13 +676,11 @@ export async function registerRoutes(
         return res.status(404).json({ error: "sesion_no_encontrada" });
       }
 
-      if (session.gameState.gameEnded) {
-        return res.status(410).json({ error: "sesion_terminada" });
-      }
-
+      // Return ended sessions so users can review their completed game
       res.json({
         gameState: session.gameState,
         plots: session.plots,
+        ended: session.gameState.gameEnded || false,
       });
     } catch (error) {
       console.error("Error in /api/session:", error);

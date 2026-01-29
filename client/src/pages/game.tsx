@@ -81,12 +81,6 @@ export default function Game() {
   useEffect(() => {
     const checkExistingSession = async () => {
       const savedSessionId = localStorage.getItem(SESSION_STORAGE_KEY);
-      const sessionEnded = localStorage.getItem(SESSION_ENDED_KEY);
-      
-      if (sessionEnded === "true") {
-        setPhase("setup");
-        return;
-      }
       
       if (!savedSessionId) {
         setPhase("setup");
@@ -98,6 +92,7 @@ export default function Game() {
         
         if (!response.ok) {
           clearSession();
+          clearSessionEnded();
           setPhase("setup");
           return;
         }
@@ -107,20 +102,43 @@ export default function Game() {
         setGameState(data.gameState);
         setSelectedLevel(data.gameState.spanishLevel);
         setSelectedDuration(data.gameState.duration);
-        setPhase("playing");
         
-        toast({
-          title: "Sesión restaurada",
-          description: "Continuando tu aventura desde donde la dejaste.",
-        });
+        // Check if this was an ended game
+        if (data.ended || data.gameState.gameEnded) {
+          // Restore ended game state so user can review it
+          const gs = data.gameState;
+          // Determine if it was game over (death) or victory (final) by checking reason fields
+          if (gs.gameOverRazon) {
+            setIsGameOver(true);
+            setGameOverRazon(gs.gameOverRazon);
+          } else if (gs.finalRazon) {
+            setIsFinal(true);
+            setFinalRazon(gs.finalRazon);
+          }
+          if (gs.resumenAprendizajes) {
+            setResumenAprendizajes(gs.resumenAprendizajes);
+          }
+          setPhase("ended");
+          toast({
+            title: "Aventura completada",
+            description: "Tu aventura anterior ha terminado. Puedes revisarla o empezar una nueva.",
+          });
+        } else {
+          setPhase("playing");
+          toast({
+            title: "Sesión restaurada",
+            description: "Continuando tu aventura desde donde la dejaste.",
+          });
+        }
       } catch {
         clearSession();
+        clearSessionEnded();
         setPhase("setup");
       }
     };
     
     checkExistingSession();
-  }, [clearSession, toast]);
+  }, [clearSession, clearSessionEnded, toast]);
 
   const toggleDarkMode = useCallback(() => {
     const newDarkMode = !darkMode;
@@ -419,18 +437,15 @@ export default function Game() {
         setIsGameOver(true);
         setGameOverRazon(data.aiResponse.game_over_razon || (newSalud <= 0 ? "Tu salud llegó a cero." : undefined));
         setPhase("ended");
-        clearSession();
-        markSessionEnded();
+        // Keep session so user can return to review their completed game
       } else if (isFinalNow) {
         setIsFinal(true);
         setFinalRazon(data.aiResponse.final_razon);
         setPhase("ended");
-        clearSession();
-        markSessionEnded();
+        // Keep session so user can return to review their completed game
       } else if (data.gameEnded) {
         setPhase("ended");
-        clearSession();
-        markSessionEnded();
+        // Keep session so user can return to review their completed game
       }
       
       if (data.aiResponse.resumen_aprendizajes) {

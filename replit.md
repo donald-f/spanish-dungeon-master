@@ -21,7 +21,7 @@ A Spanish-only text-based adventure game where an AI acts as a dungeon master (D
 ### Real Consequences System
 - **Health Tracking**: Player health (0-100) that can be damaged by reckless actions
 - **Status Effects**: States like "herido", "asustado", "agotado" affect gameplay
-- **Danger Indicators**: Each turn shows danger level (bajo/medio/alto) with explanation
+- **Danger Indicators**: Each turn shows danger level (ninguno/bajo/medio/alto) with explanation
 - **Real Death**: Stupid actions (attacking armed enemies unarmed) lead to game over
 - **Fair Warnings**: Danger is always telegraphed before it happens
 - **Story Flags**: Missed clues and important events are tracked, affecting endings
@@ -32,7 +32,7 @@ A Spanish-only text-based adventure game where an AI acts as a dungeon master (D
 - **Backend**: Node.js + Express
 - **AI**: OpenAI API via Replit AI Integrations (gpt-4o model)
 - **Database**: PostgreSQL (Neon-backed via Replit) with Drizzle ORM
-- **Session Persistence**: Game sessions stored in PostgreSQL, session ID cached in localStorage
+- **Session Persistence**: Game sessions stored in PostgreSQL, session ID cached in localStorage. Completed games are preserved until user explicitly starts a new game, allowing them to review their finished adventure.
 
 ## Project Structure
 ```
