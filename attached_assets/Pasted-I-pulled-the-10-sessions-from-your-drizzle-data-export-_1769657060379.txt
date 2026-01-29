@@ -1,0 +1,64 @@
+I pulled the 10 sessions from your drizzle-data export and… the game is working — players are getting coherent stories with escalating stakes and real conclusions — but you’ve got a couple patterns that are hurting replayability and “fairness.”
+
+What the 10 stories say about the game right now
+It does conclude (good news re: “it ended too soon”)
+
+You’re consistently hitting gameEnded: true with a clear finalRazon (win) or gameOverRazon (loss). Example win: the “Casa de muñecas” run ends with progreso: 1, gameEnded: true, and a clear “escaped and survived” final reason. 
+
+drizzle-data-2026-01-29T01_41_0…
+
+
+Example loss: “Motín silencioso” ends with gameOverRazon describing the death and gameEnded: true. 
+
+drizzle-data-2026-01-29T01_41_0…
+
+Difficulty is currently skewed hard
+
+Across the 10, it’s more losses than wins (it feels like a roguelike death rate right now). Your losses also tend to happen after the story hits “alto” danger and then stays there—meaning once you’re in the death-spiral, you rarely climb back out.
+
+Pacing: good start, but danger ramps “same-y”
+
+Most stories start at peligro: bajo, which is exactly what you wanted for the early turns. But many runs hit peligro: alto around turn ~5–7, then stay high for a long stretch. That creates a pattern where the “middle game” becomes: escape / negotiate / fail / escalate in slightly different clothing (you can see this in the Taxi run’s repeated “try to leave → driver escalates” loop).
+
+Turn target is treated like a suggestion (mostly good, sometimes messy)
+
+Your runs often exceed the targetTurns: 12 (ex: one ended at turnIndex: 13 with targetTurns: 12). 
+
+drizzle-data-2026-01-29T01_41_0…
+
+
+That’s fine if the extra turns are adding meaningful “Act 3 resolution”… but in a few sessions it looks more like the story kept going because the model stayed in a loop.
+
+Inventory exists but isn’t pulling its weight yet
+
+Some sessions do award items (e.g., “linterna”, ritual items, dagger, etc.). 
+
+drizzle-data-2026-01-29T01_41_0…
+
+ 
+
+drizzle-data-2026-01-29T01_41_0…
+
+
+But a lot of deaths happen without inventory ever becoming a genuine tactical lever (like: “use X to lower danger,” “trade X for ally,” “spend potion to negate a consequence,” etc.). So items are flavor, not mechanics, in many runs.
+
+My DM verdict
+
+Right now the game feels like:
+
+Strong atmosphere + clear stakes
+
+But the decision-space compresses under pressure (lots of “any choice escalates”), and when the story hits high danger it often becomes a funnel toward death unless you pick the one “correct” vibe.
+
+The 3 highest-impact tweaks (based on these 10 runs)
+
+Add a “pressure release valve” once danger hits alto
+At “alto”, ensure at least one option (or a discovered tool/ally) can reduce danger back to “medio” if the player plays smart.
+
+Make inventory matter in options + consequences
+If the player has a linterna/daga/poción, it should reliably unlock a different option or soften a consequence (even if it’s not always optimal).
+
+Anti-loop rule for repeated actions
+If the player tries the same category twice (escape/force/stonewall), the next turn should change the scene (new NPC arrives, location changes, external timer triggers, etc.) rather than repeating “they get angrier and pull weapon again.”
+
+If you want, I can also crack open the zip and point to the exact prompt/logic spots in server/routes.ts that are likely causing the “danger funnel” + “looping” behavior—and propose concrete edits to fix it.

@@ -281,6 +281,82 @@ ESCALADA JUSTA (MUY IMPORTANTE)
   antes del daño letal (mirada, mano al arma, silencio, “última advertencia”, etc.).
 
 ═══════════════════════════════════════
+VÁLVULA DE PRESIÓN (PELIGRO ALTO)
+═══════════════════════════════════════
+
+CUANDO peligro.nivel = "alto":
+- SIEMPRE proporciona AL MENOS UNA opción que permita REDUCIR el peligro a "medio" si el jugador juega inteligentemente.
+- Esta opción puede ser: esconderse, negociar, usar un objeto del inventario, encontrar un aliado, crear una distracción, etc.
+- NO dejes al jugador en un "embudo de muerte" donde TODAS las opciones conducen a más peligro o muerte.
+- El peligro alto NO debe mantenerse más de 2-3 turnos consecutivos sin una oportunidad real de escape.
+- Ejemplos de "válvulas de presión":
+  * Un pasadizo secreto que el jugador puede descubrir
+  * Un PNJ neutral que interviene
+  * Un objeto del inventario que puede usarse tácticamente
+  * Una ventana de tiempo para escapar
+  * Un error del enemigo que crea una apertura
+
+═══════════════════════════════════════
+INVENTARIO COMO MECÁNICA TÁCTICA
+═══════════════════════════════════════
+
+Los objetos del inventario DEBEN ser herramientas tácticas REALES, no solo decoración narrativa:
+
+1. OPCIONES DESBLOQUEADAS POR OBJETOS
+   - Si el jugador tiene una linterna → puede explorar áreas oscuras de forma segura
+   - Si el jugador tiene un arma → puede defenderse (reduce daño o evita muerte)
+   - Si el jugador tiene una llave/herramienta → puede abrir rutas alternativas
+   - Si el jugador tiene un objeto de curación → puede recuperar salud
+   - INCLUYE explícitamente estas opciones cuando el jugador tenga el objeto relevante
+
+2. CONSECUENCIAS SUAVIZADAS POR OBJETOS
+   - Un arma reduce el daño recibido en combate (-20 a -30 en vez de -50)
+   - Una armadura/escudo puede negar un ataque
+   - Un objeto mágico puede proteger contra efectos sobrenaturales
+   - Una cuerda puede evitar una caída fatal
+
+3. RECORDATORIO DE INVENTARIO
+   - Cuando el jugador enfrenta un problema que un objeto del inventario podría resolver,
+     MENCIONA el objeto en la narración o proporciona una opción que lo use.
+   - Ejemplo: "Recuerdas que tienes la linterna..." o "Opción B: Usar la daga para..."
+
+4. COSTO DE USO
+   - Algunos objetos consumibles se gastan al usarse (quitar del inventario)
+   - Otros objetos son permanentes pero pueden dañarse o perderse en situaciones extremas
+
+═══════════════════════════════════════
+REGLA ANTI-BUCLE (VARIEDAD NARRATIVA)
+═══════════════════════════════════════
+
+Si el jugador intenta la MISMA CATEGORÍA de acción 2+ veces seguidas, CAMBIA LA ESCENA:
+
+CATEGORÍAS DE ACCIÓN:
+- Escape: huir, esconderse, correr, saltar por ventana
+- Fuerza: atacar, luchar, destruir, forzar
+- Negociación: hablar, persuadir, mentir, sobornar
+- Investigación: examinar, buscar, leer, escuchar
+
+CUANDO SE DETECTA REPETICIÓN:
+1. NO repitas "el enemigo se enfurece más y saca otra arma"
+2. En su lugar, CAMBIA LA SITUACIÓN con uno de estos elementos:
+   - Llega un nuevo PNJ (aliado, enemigo, o neutral)
+   - Cambia la ubicación (colapso, incendio, inundación, transporte)
+   - Pasa el tiempo (anochecer, amanecer, cambio de turno de guardias)
+   - Ocurre un evento externo (alarma, explosión, tormenta, terremoto)
+   - El enemigo cambia de táctica o revela información nueva
+3. Esto rompe el "bucle" y da al jugador nuevas herramientas para resolver la situación
+
+EJEMPLO DE BUCLE MALO:
+- Turno 5: Jugador intenta escapar → conductor bloquea la puerta
+- Turno 6: Jugador intenta escapar → conductor amenaza con arma
+- Turno 7: Jugador intenta escapar → conductor dispara (MUERTE)
+
+EJEMPLO CORREGIDO:
+- Turno 5: Jugador intenta escapar → conductor bloquea la puerta
+- Turno 6: Jugador intenta escapar → el taxi se detiene en un semáforo, hay gente afuera
+- Turno 7: Nueva situación con múltiples opciones viables
+
+═══════════════════════════════════════
 FORMATO JSON REQUERIDO
 ═══════════════════════════════════════
 
@@ -304,7 +380,7 @@ FORMATO JSON REQUERIDO
 
   "consecuencia": "Descripción breve de qué pasó por la acción del jugador",
   "peligro": {
-    "nivel": "bajo|medio|alto",
+    "nivel": "ninguno|bajo|medio|alto",
     "razon": "Por qué hay este nivel de peligro"
   },
   "cambio_estado": {

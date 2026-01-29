@@ -27,6 +27,12 @@ A Spanish-only text-based adventure game where an AI acts as a dungeon master (D
 - **Story Flags**: Missed clues and important events are tracked, affecting endings
 - **Learning Summary**: At game end, shows what Spanish was learned during play
 
+### Fair DM Mechanics (Improved Gameplay)
+- **Pressure Release Valve**: When danger is "alto", AI always provides at least one option to reduce danger back to "medio" (hide, negotiate, use inventory item, find ally, create distraction)
+- **Tactical Inventory**: Items unlock specific options and soften consequences (weapons reduce combat damage, tools open alternate routes, healing items restore health)
+- **Anti-Loop System**: If player tries same action category 2+ times, AI changes the scene (new NPC arrives, location changes, time passes, external event occurs) instead of just escalating hostility
+- **Balanced Difficulty**: High danger cannot persist more than 2-3 turns without escape opportunity
+
 ## Tech Stack
 - **Frontend**: React with TypeScript, Vite, TailwindCSS, Shadcn/UI components
 - **Backend**: Node.js + Express
