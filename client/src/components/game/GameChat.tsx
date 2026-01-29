@@ -70,6 +70,7 @@ function DangerIndicator({ peligro }: { peligro?: Peligro }) {
   if (!peligro) return null;
 
   const colors = {
+    ninguno: "bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30",
     bajo: "bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30",
     medio:
       "bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-500/30",
@@ -77,12 +78,14 @@ function DangerIndicator({ peligro }: { peligro?: Peligro }) {
   };
 
   const icons = {
+    ninguno: <Shield className="h-4 w-4" />,
     bajo: <Shield className="h-4 w-4" />,
     medio: <AlertTriangle className="h-4 w-4" />,
     alto: <Zap className="h-4 w-4" />,
   };
 
   const labels = {
+    ninguno: "Sin Peligro",
     bajo: "Peligro Bajo",
     medio: "Peligro Medio",
     alto: "¡Peligro Alto!",

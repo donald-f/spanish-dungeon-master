@@ -39,7 +39,7 @@ export type Duration = typeof durations[number];
 export const inputModes = ["Acción", "Pregunta"] as const;
 export type InputMode = typeof inputModes[number];
 
-export const dangerLevels = ["bajo", "medio", "alto"] as const;
+export const dangerLevels = ["ninguno", "bajo", "medio", "alto"] as const;
 export type DangerLevel = typeof dangerLevels[number];
 
 // Duration to target turns mapping

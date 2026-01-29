@@ -445,7 +445,42 @@ function parseAIResponse(content: string): AIResponse {
     .replace(/```\n?/g, "")
     .trim();
   const sanitized = sanitizeJsonString(cleaned);
-  const parsed = JSON.parse(sanitized);
+  
+  let parsed: any;
+  try {
+    parsed = JSON.parse(sanitized);
+  } catch (firstError) {
+    // Try to repair truncated JSON by closing open brackets/braces
+    let repaired = sanitized;
+    
+    // Count open brackets and braces
+    const openBraces = (repaired.match(/{/g) || []).length;
+    const closeBraces = (repaired.match(/}/g) || []).length;
+    const openBrackets = (repaired.match(/\[/g) || []).length;
+    const closeBrackets = (repaired.match(/\]/g) || []).length;
+    
+    // Remove trailing incomplete content (after last complete value)
+    repaired = repaired.replace(/,\s*$/, '');
+    repaired = repaired.replace(/,\s*"[^"]*$/, '');
+    repaired = repaired.replace(/:\s*"[^"]*$/, ': ""');
+    repaired = repaired.replace(/:\s*$/, ': null');
+    
+    // Close unclosed brackets and braces
+    for (let i = 0; i < openBrackets - closeBrackets; i++) {
+      repaired += ']';
+    }
+    for (let i = 0; i < openBraces - closeBraces; i++) {
+      repaired += '}';
+    }
+    
+    try {
+      parsed = JSON.parse(repaired);
+      console.log('[parseAIResponse] Repaired truncated JSON successfully');
+    } catch (secondError) {
+      console.error('[parseAIResponse] JSON repair failed, throwing original error');
+      throw firstError;
+    }
+  }
 
   if (parsed.game_over || parsed.final) {
     parsed.opciones = [];
