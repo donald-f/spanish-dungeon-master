@@ -215,6 +215,10 @@ export function GameChat({
   const lastNarrationShownRef = useRef<string>("");
   const pendingNarrationModalRef = useRef(false);
 
+  const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
+  const longPressTimeoutRef = useRef<number | null>(null);
+  const longPressTriggeredRef = useRef(false);
+
   // Detect mobile viewport
   useEffect(() => {
     const checkMobile = () => {
@@ -328,7 +332,32 @@ export function GameChat({
     setShowNarrationModal(false);
   };
 
+  
+  const canPrefillActionTextarea =
+    inputMode !== "Pregunta" && gameState.permitirTextoLibre;
+
+  const prefillActionTextarea = (text: string) => {
+    if (!canPrefillActionTextarea || isLoading || gameEnded) return;
+    setTextInput(text);
+    // Focus after state update
+    setTimeout(() => textAreaRef.current?.focus(), 0);
+  };
+
+  const clearLongPressTimer = () => {
+    if (longPressTimeoutRef.current !== null) {
+      window.clearTimeout(longPressTimeoutRef.current);
+      longPressTimeoutRef.current = null;
+    }
+  };
+
   const handleOptionClick = (option: GameOption) => {
+    // If the user long-pressed (mobile) / right-clicked (desktop) to copy an option into the textarea,
+    // don't also send that option as a turn action.
+    if (longPressTriggeredRef.current) {
+      longPressTriggeredRef.current = false;
+      return;
+    }
+
     if (!isLoading && !gameEnded) {
       onSendAction(option.texto, option.id);
     }
@@ -545,6 +574,36 @@ export function GameChat({
                   variant="outline"
                   className="justify-start text-left h-auto py-3 px-4 whitespace-normal"
                   onClick={() => handleOptionClick(option)}
+                  onContextMenu={(e) => {
+                    if (isMobile) return;
+                    if (!canPrefillActionTextarea) return;
+                    // Right-click copies option text into the free-action textarea.
+                    e.preventDefault();
+                    longPressTriggeredRef.current = true;
+                    prefillActionTextarea(option.texto);
+                  }}
+                  onPointerDown={() => {
+                    if (!isMobile) return;
+                    if (!canPrefillActionTextarea) return;
+                    clearLongPressTimer();
+                    longPressTriggeredRef.current = false;
+                    longPressTimeoutRef.current = window.setTimeout(() => {
+                      longPressTriggeredRef.current = true;
+                      prefillActionTextarea(option.texto);
+                    }, 550);
+                  }}
+                  onPointerUp={() => {
+                    if (!isMobile) return;
+                    clearLongPressTimer();
+                  }}
+                  onPointerCancel={() => {
+                    if (!isMobile) return;
+                    clearLongPressTimer();
+                  }}
+                  onPointerLeave={() => {
+                    if (!isMobile) return;
+                    clearLongPressTimer();
+                  }}
                   disabled={isLoading}
                   data-testid={`button-option-${option.id}`}
                 >
@@ -560,6 +619,7 @@ export function GameChat({
           {(inputMode === "Pregunta" || gameState.permitirTextoLibre) && (
             <div className="flex gap-2">
               <Textarea
+                ref={textAreaRef}
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
                 onKeyDown={handleKeyDown}
