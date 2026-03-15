@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(grep -B5 -A10 '\"\"bufferutil\"\"' package-lock.json)",
+      "Bash(grep -A5 '\"\"node_modules/bufferutil\"\"' package-lock.json)"
+    ]
+  }
+}
