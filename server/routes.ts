@@ -738,6 +738,19 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express,
 ): Promise<Server> {
+  app.post("/api/auth", (req, res) => {
+    const { password } = req.body;
+    const appPassword = process.env.APP_PASSWORD;
+    if (!appPassword) {
+      return res.status(500).json({ error: "APP_PASSWORD not configured" });
+    }
+    if (password === appPassword) {
+      res.json({ success: true });
+    } else {
+      res.status(401).json({ error: "Invalid password" });
+    }
+  });
+
   app.get("/api/usage", async (req, res) => {
     res.json(await getUsageStats());
   });
