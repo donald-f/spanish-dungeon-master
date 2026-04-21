@@ -7,6 +7,10 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+function getStoredPassword(): string {
+  return localStorage.getItem("sdm_password") ?? "";
+}
+
 export async function apiRequest(
   method: string,
   url: string,
@@ -14,7 +18,10 @@ export async function apiRequest(
 ): Promise<Response> {
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers: {
+      ...(data ? { "Content-Type": "application/json" } : {}),
+      "X-App-Password": getStoredPassword(),
+    },
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -31,6 +38,7 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     const res = await fetch(queryKey.join("/") as string, {
       credentials: "include",
+      headers: { "X-App-Password": getStoredPassword() },
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

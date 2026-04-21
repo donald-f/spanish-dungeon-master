@@ -1,17 +1,13 @@
 import { useState } from "react";
 
-const STORAGE_KEY = "sdm_auth";
-
-export function useAuth() {
-  return localStorage.getItem(STORAGE_KEY) === "true";
-}
+const STORAGE_KEY = "sdm_password";
 
 export function clearAuth() {
   localStorage.removeItem(STORAGE_KEY);
 }
 
 export default function PasswordGate({ children }: { children: React.ReactNode }) {
-  const [authed, setAuthed] = useState(() => localStorage.getItem(STORAGE_KEY) === "true");
+  const [authed, setAuthed] = useState(() => !!localStorage.getItem(STORAGE_KEY));
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,7 +25,7 @@ export default function PasswordGate({ children }: { children: React.ReactNode }
         body: JSON.stringify({ password }),
       });
       if (res.ok) {
-        localStorage.setItem(STORAGE_KEY, "true");
+        localStorage.setItem(STORAGE_KEY, password);
         setAuthed(true);
       } else {
         setError("Incorrect password");

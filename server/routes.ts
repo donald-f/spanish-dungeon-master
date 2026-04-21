@@ -751,6 +751,17 @@ export async function registerRoutes(
     }
   });
 
+  app.use("/api", (req: Request, res: Response, next: NextFunction) => {
+    if (req.path === "/auth") return next();
+    const appPassword = process.env.APP_PASSWORD;
+    if (!appPassword) return next();
+    const provided = req.headers["x-app-password"];
+    if (provided !== appPassword) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    next();
+  });
+
   app.get("/api/usage", async (req, res) => {
     res.json(await getUsageStats());
   });
