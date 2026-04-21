@@ -766,6 +766,35 @@ export async function registerRoutes(
     res.json(await getUsageStats());
   });
 
+  app.post("/api/tts", async (req, res) => {
+    try {
+      const { text } = req.body;
+      if (!text || typeof text !== "string" || text.trim().length === 0) {
+        return res.status(400).json({ error: "text is required" });
+      }
+      if (text.length > 4096) {
+        return res.status(400).json({ error: "text too long" });
+      }
+      const response = await openai.audio.speech.create({
+        model: "gpt-4o-mini-tts",
+        voice: "alloy",
+        input: text,
+        response_format: "mp3",
+        instructions: `You are a seasoned Dungeon Master narrating a Spanish-language adventure.
+Speak with a calm, authoritative male voice — confident and measured, like someone who has seen many battles and knows how to hold a room.
+Pace yourself naturally: unhurried but never sluggish, with deliberate weight on dramatic moments and a slightly quicker rhythm for action.
+Your tone should feel immersive and cinematic — this is a story unfolding, not a lecture.
+Pronounce Spanish clearly and authentically.`,
+      } as Parameters<typeof openai.audio.speech.create>[0]);
+      const buffer = Buffer.from(await response.arrayBuffer());
+      res.set("Content-Type", "audio/mpeg");
+      res.send(buffer);
+    } catch (error) {
+      console.error("Error in /api/tts:", error);
+      res.status(500).json({ error: "TTS generation failed" });
+    }
+  });
+
   app.get("/api/session/:sessionId", async (req, res) => {
     try {
       const { sessionId } = req.params;

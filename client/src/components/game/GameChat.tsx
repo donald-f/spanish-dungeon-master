@@ -214,7 +214,6 @@ export function GameChat({
 }: GameChatProps) {
   const [textInput, setTextInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
-  const lastSpokenRef = useRef<string>("");
   const [showPreguntaModal, setShowPreguntaModal] = useState(false);
   const [showGrammarModal, setShowGrammarModal] = useState(false);
   const [showNarrationModal, setShowNarrationModal] = useState(false);
@@ -306,23 +305,6 @@ export function GameChat({
     gameEnded,
   ]);
 
-  useEffect(() => {
-    if (
-      onSpeakNarration &&
-      gameState.currentNarracion &&
-      gameState.currentNarracion !== lastSpokenRef.current &&
-      !showGrammarModal &&
-      !grammarFeedback
-    ) {
-      lastSpokenRef.current = gameState.currentNarracion;
-      onSpeakNarration(gameState.currentNarracion);
-    }
-  }, [
-    gameState.currentNarracion,
-    onSpeakNarration,
-    showGrammarModal,
-    grammarFeedback,
-  ]);
 
   const handleClosePreguntaModal = () => {
     setShowPreguntaModal(false);
@@ -333,10 +315,6 @@ export function GameChat({
   const handleCloseGrammarModal = () => {
     setShowGrammarModal(false);
     onDismissGrammarFeedback?.();
-    if (onSpeakNarration && pendingNarration) {
-      lastSpokenRef.current = pendingNarration;
-      onSpeakNarration(pendingNarration);
-    }
     // On mobile, show narration modal after grammar modal closes
     if (
       isMobile &&
