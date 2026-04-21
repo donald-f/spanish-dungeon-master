@@ -88,7 +88,9 @@ export default function Game() {
       }
       
       try {
-        const response = await fetch(`/api/session/${savedSessionId}`);
+        const response = await fetch(`/api/session/${savedSessionId}`, {
+          headers: { "X-App-Password": localStorage.getItem("sdm_password") ?? "" },
+        });
         
         if (!response.ok) {
           clearSession();
@@ -175,7 +177,7 @@ export default function Game() {
     try {
       const response = await fetch("/api/start", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-App-Password": localStorage.getItem("sdm_password") ?? "" },
         body: JSON.stringify({ spanishLevel: level, duration }),
       });
       
@@ -222,7 +224,7 @@ export default function Game() {
       
       const response = await fetch("/api/select-plot", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-App-Password": localStorage.getItem("sdm_password") ?? "" },
         body: JSON.stringify(requestBody),
       });
       
@@ -259,7 +261,7 @@ export default function Game() {
     try {
       const response = await fetch("/api/turn", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-App-Password": localStorage.getItem("sdm_password") ?? "" },
         body: JSON.stringify({
           sessionId,
           mode: inputMode,
